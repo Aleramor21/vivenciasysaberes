@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
+
     <style>
         :root {
             --bg-dark: #111827; --card-bg: #4f46e5; --surface-dark: #1F2937; --surface-light: #374151; --border-color: #4B5563;
@@ -119,44 +119,55 @@
         const DOCUMENT_ID = '1ZQTvlAHZpME_XfoCx6WNu1sNJEntwaOr-a-PF1lQMvE';
         const SCOPES = 'https://www.googleapis.com/auth/documents';
 
-        // === INICIALIZACIÓN DE APIS CON PROMISES ===
         let tokenClient;
-        const gapiPromise = new Promise(resolve => {
+
+        // === INICIALIZACIÓN DE APIS CONTROLADA ===
+        const gapiPromise = new Promise((resolve, reject) => {
             window.gapiLoaded = () => {
                 gapi.load('client', async () => {
-                    await gapi.client.init({
-                        apiKey: API_KEY,
-                        discoveryDocs: ['https://docs.googleapis.com/$discovery/rest?version=v1'],
+                    try {
+                        await gapi.client.init({
+                            apiKey: API_KEY,
+                            discoveryDocs: ['https://docs.googleapis.com/$discovery/rest?version=v1'],
+                        });
+                        resolve();
+                    } catch (err) {
+                        reject(err);
+                    }
+                });
+            };
+        });
+
+        const gisPromise = new Promise((resolve, reject) => {
+            window.gisLoaded = () => {
+                try {
+                    tokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: CLIENT_ID,
+                        scope: SCOPES,
+                        callback: '',
                     });
                     resolve();
-                });
+                } catch(err) {
+                    reject(err);
+                }
             };
         });
-        const gisPromise = new Promise(resolve => {
-            window.gisLoaded = () => {
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: CLIENT_ID,
-                    scope: SCOPES,
-                    callback: '',
-                });
-                resolve();
-            };
-        });
-
+        
         // Carga dinámica de los scripts de Google
-        (function loadGoogleScripts() {
-            const gapiScript = document.createElement('script');
-            gapiScript.src = 'https://apis.google.com/js/api.js?onload=gapiLoaded';
-            gapiScript.async = true;
-            gapiScript.defer = true;
-            document.head.appendChild(gapiScript);
-
-            const gisScript = document.createElement('script');
-            gisScript.src = 'https://accounts.google.com/gsi/client?onload=gisLoaded';
-            gisScript.async = true;
-            gisScript.defer = true;
-            document.head.appendChild(gisScript);
-        })();
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.defer = true;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        
+        loadScript('https://apis.google.com/js/api.js?onload=gapiLoaded');
+        loadScript('https://accounts.google.com/gsi/client?onload=gisLoaded');
 
         // El resto del código se ejecuta cuando el DOM esté listo.
         document.addEventListener('DOMContentLoaded', () => {
@@ -307,7 +318,7 @@
                     return response.text();
                 } catch (error) {
                     console.error('Error al generar el resumen:', error);
-                    alert(`No se pudo generar el resumen. Revisa la consola para más detalles.\n\nError: ${error.message}`);
+                    alert(`No se pudo generar el resumen. La API Key podría no tener los permisos correctos para "Generative Language API".\n\nError: ${error.message}`);
                     return null;
                 }
             }
