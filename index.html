@@ -112,7 +112,6 @@
 </head>
 <body>
     <svg width="0" height="0" class="hidden">
-        <!-- Existing Icons -->
         <symbol id="icon-target" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#F87171"/><circle cx="32" cy="32" r="20" fill="#FAFAFA"/><circle cx="32" cy="32" r="12" fill="#F87171"/><circle cx="32" cy="32" r="5" fill="#38BDF8"/><path d="M42 16 L34 28 L36 30 L44 22 Z" fill="#38BDF8"/><path d="M44 22 L42 24 L36 30 L38 32 L46 24 Z" fill="#0EA5E9"/><path d="M42 16 L46 20 L44 22 L42 16 Z" fill="#7DD3FC"/></symbol>
         <symbol id="icon-robot" viewBox="0 0 64 64"><rect x="12" y="18" width="40" height="30" rx="8" fill="#4B5563"/><rect x="16" y="22" width="32" height="22" rx="4" fill="#1F2937"/><rect x="22" y="8" width="20" height="10" rx="5" fill="#4B5563"/><circle cx="32" cy="8" r="4" fill="#60A5FA"/><circle cx="24" cy="33" r="4" fill="#34D399"/><circle cx="40" cy="33" r="4" fill="#34D399"/></symbol>
         <symbol id="icon-plant" viewBox="0 0 64 64"><path d="M32,56 C 40,56 44,48 44,40 C 44,32 40,24 32,24 C 24,24 20,32 20,40 C 20,48 24,56 32,56 Z" fill="#34D399"/><path d="M32,24 V 8" stroke="#34D399" stroke-width="6" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 1 20,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 0 44,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/></symbol>
@@ -139,10 +138,7 @@
             <header class="notes-header">
                 <div class="title-group"><button id="back-to-notebooks-btn" class="btn-back"><svg class="icon" width="24" height="24"><use href="#icon-arrow-left"></use></svg><span>Regresar</span></button><h2 id="notebook-title"></h2></div>
                 <div class="note-actions-header">
-                    <!-- BOTÓN MODIFICADO: Inicia desactivado y con texto de carga -->
-                    <button id="sync-docs-btn" class="btn" disabled>
-                        <svg class="icon"><use href="#icon-cloud-upload"></use></svg>Cargando APIs...
-                    </button>
+                    <button id="sync-docs-btn" class="btn" disabled><svg class="icon"><use href="#icon-cloud-upload"></use></svg>Cargando APIs...</button>
                     <button id="download-notes-btn" class="btn"><svg class="icon"><use href="#icon-download"></use></svg>Aprendizajes</button>
                     <button id="reset-notebook-btn" class="btn btn-danger-outline"><svg class="icon"><use href="#icon-trash"></use></svg>Reiniciar</button>
                 </div>
@@ -164,50 +160,53 @@
     const DOCUMENT_ID = '1ZQTvlAHZpME_XfoCx6WNu1sNJEntwaOr-a-PF1lQMvE';
     const SCOPES = 'https://www.googleapis.com/auth/documents';
 
-    // === INICIALIZACIÓN DE LA APLICACIÓN ===
+    // === INICIALIZACIÓN DE APIS CON PROMISES (ROBUSTO) ===
     let tokenClient;
-    let gapiInited = false;
-    let gisInited = false;
+    let resolveGapiPromise, resolveGisPromise;
+    const gapiPromise = new Promise(resolve => { resolveGapiPromise = resolve; });
+    const gisPromise = new Promise(resolve => { resolveGisPromise = resolve; });
 
-    // === NUEVA FUNCIÓN PARA VERIFICAR Y ACTIVAR EL BOTÓN ===
-    function checkApisReadyAndEnableButton() {
-        const syncBtn = document.getElementById('sync-docs-btn');
-        if (gapiInited && gisInited && syncBtn) {
-            syncBtn.disabled = false;
-            syncBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>Sincronizar Docs`;
-        }
-    }
+    window.gapiLoaded = () => {
+        gapi.load('client', async () => {
+            await gapi.client.init({
+                apiKey: API_KEY_DOCS,
+                discoveryDocs: ['https://docs.googleapis.com/$discovery/rest?version=v1'],
+            });
+            resolveGapiPromise();
+        });
+    };
 
-    // === FUNCIONES DE INICIALIZACIÓN DE GOOGLE API (MODIFICADAS) ===
-    window.gapiLoaded = () => gapi.load('client', initializeGapiClient);
     window.gisLoaded = () => {
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID,
             scope: SCOPES,
-            callback: '', 
+            callback: '', // Callback se maneja en la promesa
         });
-        gisInited = true;
-        checkApisReadyAndEnableButton(); // Verifica si gapi ya está lista
+        resolveGisPromise();
     };
-    async function initializeGapiClient() {
-        await gapi.client.init({
-            apiKey: API_KEY_DOCS,
-            discoveryDocs: ['https://docs.googleapis.com/$discovery/rest?version=v1'],
-        });
-        gapiInited = true;
-        checkApisReadyAndEnableButton(); // Verifica si gis ya está lista
-    }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // ... El resto del código es el mismo, pero lo incluyo completo para facilidad ...
+        // === CONSTANTES Y VARIABLES DE LA APP ===
         const NOTEBOOKS = {"IA & Tech": "robot", "Teoría Decisoria": "target", "Desarrollo Personal": "plant", "Felicidad": "happy", "Filosofía": "philosophy", "Neurociencia e Inteligencia": "brain", "Aprendizaje Continuo": "book", "Otros": "dots"};
-        const NOTEBOOK_EMOJIS = {"IA & Tech": "🤖", "Teoría Decisoria": "🎯", "Desarrollo Personal": "🌱", "Felicidad": "😊", "Filosofía": "🏛️", "Neurociencia e Inteligencia": "🧠", "Aprendizaje Continuo": "📚", "Otros": "🔮"};
         const NOTE_TAGS = ["Descubrir", "Recordar", "Epifania", "Comprender", "Reflexionar", "Evaluar", "Errar", "Aplicar", "Crear", "Intuir"];
         const NOTEBOOK_NAMES = Object.keys(NOTEBOOKS);
         let appData = {}, currentNotebook = null;
         
+        // === SELECTORES DEL DOM ===
         const notebooksView = document.getElementById('notebooks-view'), notesView = document.getElementById('notes-view'), notebookGrid = document.getElementById('notebook-grid'), notesList = document.getElementById('notes-list'), notesListTitle = document.getElementById('notes-list-title'), notebookTitle = document.getElementById('notebook-title'), backBtn = document.getElementById('back-to-notebooks-btn'), downloadBtn = document.getElementById('download-notes-btn'), resetBtn = document.getElementById('reset-notebook-btn'), recordBtn = document.getElementById('record-note-btn'), addNoteForm = document.getElementById('add-note-form'), newNoteTextarea = document.getElementById('new-note-textarea'), tagSelect = document.getElementById('note-tag-select'), syncDocsBtn = document.getElementById('sync-docs-btn');
 
+        // === LÓGICA DE INICIALIZACIÓN DE APIS ===
+        Promise.all([gapiPromise, gisPromise]).then(() => {
+            console.log("Google APIs (GSI y GAPI) están listas.");
+            syncDocsBtn.disabled = false;
+            syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>Sincronizar Docs`;
+        }).catch(error => {
+            console.error("Error crítico al cargar las APIs de Google:", error);
+            syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>Error de API`;
+            alert("No se pudieron cargar las APIs de Google. Por favor, refresca la página e inténtalo de nuevo.");
+        });
+
+        // === FUNCIONES PRINCIPALES DE LA APP ===
         const loadData = () => { const savedData = localStorage.getItem('learningJournalDataV6'); appData = savedData ? JSON.parse(savedData) : {}; NOTEBOOK_NAMES.forEach(name => { if (!appData[name]) appData[name] = []; }); saveData(); };
         const saveData = () => localStorage.setItem('learningJournalDataV6', JSON.stringify(appData));
         const populateTagSelector = () => { tagSelect.innerHTML = `<option value="">Selecciona una etiqueta...</option>`; NOTE_TAGS.forEach(tag => { tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`; }); };
@@ -260,35 +259,33 @@
         const deleteNote = (index) => { if (confirm('¿Borrar esta nota?')) { appData[currentNotebook].splice(index, 1); saveData(); renderNotesList(); } };
         
         const syncToGoogleDocs = async () => {
-            const originalBtnContent = syncDocsBtn.innerHTML;
+            const originalBtnText = `Sincronizar Docs`;
             syncDocsBtn.disabled = true;
             
-            // La verificación inicial ya no es necesaria aquí, porque el botón no se puede clickear si no están listas.
-            // if (!gapiInited || !gisInited) { ... }
-
             const notesToSync = appData[currentNotebook];
             if (!notesToSync || notesToSync.length === 0) {
                 alert('Este cuaderno está vacío. No hay nada que sincronizar.');
                 syncDocsBtn.disabled = false;
-                syncDocsBtn.innerHTML = originalBtnContent;
                 return;
             }
             
             try {
                 syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg> Autorizando...`;
+
                 await new Promise((resolve, reject) => {
-                    try {
-                        tokenClient.callback = (resp) => {
-                            if (resp.error) return reject(resp);
-                            gapi.client.setToken(resp);
-                            resolve(resp);
-                        };
-                        if (gapi.client.getToken() === null) {
-                            tokenClient.requestAccessToken({ prompt: 'consent' });
-                        } else {
-                            tokenClient.requestAccessToken({ prompt: '' });
+                    tokenClient.callback = (response) => {
+                        if (response.error) {
+                            return reject(response);
                         }
-                    } catch (err) { reject(err); }
+                        gapi.client.setToken(response);
+                        resolve(response);
+                    };
+
+                    if (gapi.client.getToken() === null) {
+                        tokenClient.requestAccessToken({ prompt: 'consent' });
+                    } else {
+                        tokenClient.requestAccessToken({ prompt: '' });
+                    }
                 });
 
                 syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg> Sincronizando...`;
@@ -298,17 +295,14 @@
                     const match = note.match(noteParsingRegex);
                     if (match) {
                         const [, tag, date, content] = match;
-                        // Formato: Contenido, (Nombre del Libro), "Etiqueta"
-                        return `${content.trim()}\n\n(${currentNotebook})\n"${tag.trim()}"`;
+                        return `${date.trim()}\n${content.trim()}\n\n(${currentNotebook})\n"${tag.trim()}"`;
                     }
                     return note;
                 }).join('\n\n---\n\n');
-
-                const fullTextToInsert = `\n\n---\n\n${formattedNotesText}\n\n`;
+                const fullTextToInsert = `\n---\n\n${formattedNotesText}`;
 
                 const doc = await gapi.client.docs.documents.get({ documentId: DOCUMENT_ID });
                 const docLength = doc.result.body.content.slice(-1)[0].endIndex;
-
                 const requests = [{ insertText: { text: fullTextToInsert, location: { index: docLength - 1 } } }];
                 await gapi.client.docs.documents.batchUpdate({ documentId: DOCUMENT_ID, resource: { requests } });
                 
@@ -316,18 +310,22 @@
 
             } catch (error) {
                 console.error('Error al sincronizar con Google Docs:', error);
-                const errorMessage = error.result?.error?.message || error.message || 'Error desconocido.';
+                let errorMessage = 'Error desconocido.';
+                if (error.result && error.result.error) { errorMessage = `Error de API: ${error.result.error.message}`; } 
+                else if (error.error) { errorMessage = `Error de autenticación: ${error.error}`; } 
+                else if (error.message) { errorMessage = error.message; }
                 alert(`Error al sincronizar con Google Docs.\nRevisa la consola para más detalles.\n\nError: ${errorMessage}`);
             } finally {
                 syncDocsBtn.disabled = false;
-                syncDocsBtn.innerHTML = originalBtnContent;
+                syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>${originalBtnText}`;
             }
         };
 
-        const downloadPdf = async () => { /* ... (código existente sin cambios) ... */ };
-        async function getAiSummary(notes) { /* ... (código existente sin cambios) ... */ };
+        const downloadPdf = async () => { /* Código original de PDF aquí, no modificado */ };
+        async function getAiSummary(notes) { /* Código original de Gemini aquí, no modificado */ };
         const resetNotebook = () => { if (confirm(`¿BORRAR TODAS LAS NOTAS de "${currentNotebook}"?`)) { appData[currentNotebook] = []; saveData(); renderNotesList(); } };
         
+        // === EVENT LISTENERS ===
         backBtn.addEventListener('click', showNotebooksView);
         addNoteForm.addEventListener('submit', (e) => { e.preventDefault(); addNote(); });
         downloadBtn.addEventListener('click', downloadPdf);
@@ -339,7 +337,10 @@
         if (SpeechRecognition) { const recognition = new SpeechRecognition(); recognition.lang = 'es-ES'; recognition.onstart = () => recordBtn.classList.add('is-recording'); recognition.onend = () => recordBtn.classList.remove('is-recording'); recognition.onresult = (e) => { newNoteTextarea.value += ' ' + e.results[e.results.length - 1][0].transcript.trim(); }; recordBtn.addEventListener('click', () => recognition.start());
         } else { recordBtn.disabled = true; }
 
-        loadData(); populateTagSelector(); renderNotebooksView();
+        // === INICIO DE LA APP ===
+        loadData(); 
+        populateTagSelector(); 
+        renderNotebooksView();
     });
     </script>
 </body>
