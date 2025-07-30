@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Experiencias de Aprendizaje ✨</title>
+    <meta name="description" content="Registra, etiqueta y organiza tus descubrimientos académicos." />
+    <meta name="author" content="Learning Journal App" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script type="module">
+        import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "https://esm.run/@google/generative-ai";
+        window.GoogleGenerativeAI = GoogleGenerativeAI;
+        window.HarmCategory = HarmCategory;
+        window.HarmBlockThreshold = HarmBlockThreshold;
+    </script>
+
+    <style>
+        :root {
+            --bg-dark: #111827; 
+            --card-bg: #4f46e5; 
+            --surface-dark: #1F2937;
+            --surface-light: #374151;
+            --border-color: #4B5563;
+            --text-primary: #F9FAFB;
+            --text-secondary: #9CA3AF;
+            --accent-primary: #8B5CF6;
+            --accent-hover: #7C3AED;
+            --font-family: 'Poppins', sans-serif;
+            --border-radius: 0.75rem;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-family); background-color: var(--bg-dark); color: var(--text-primary); line-height: 1.6; }
+        .hidden { display: none !important; }
+        .app-container { max-width: 1024px; margin: 0 auto; padding: 2rem 1rem; }
+        .main-header { text-align: center; margin-bottom: 3rem; }
+        .main-header h1 { font-size: 2.5rem; font-weight: 700; color: var(--text-primary); }
+        .main-header p { font-size: 1.125rem; color: var(--text-secondary); margin-top: 0.5rem; }
+        .notebook-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+        .notebook-card {
+            background-color: var(--card-bg); border-radius: var(--border-radius); padding: 1.5rem;
+            text-align: center; display: flex; flex-direction: column; justify-content: space-between;
+            border: 1px solid var(--border-color); transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .notebook-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3); }
+        .notebook-card .icon-container .icon { width: 64px; height: 64px; margin-bottom: 1rem; }
+        .notebook-card h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary); }
+        .notebook-card .note-count { color: #C7D2FE; font-size: 0.875rem; margin-bottom: 1.5rem; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            padding: 0.75rem 1.5rem; border: none; border-radius: var(--border-radius);
+            font-size: 1rem; font-weight: 500; cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s; text-decoration: none; width: 100%;
+            white-space: nowrap;
+        }
+        .btn:disabled { cursor: not-allowed; opacity: 0.7; }
+        .btn:active { transform: scale(0.98); }
+        .btn .icon { width: 20px; height: 20px; }
+        .btn-card-open { background-color: transparent; color: var(--text-primary); border: 1px solid rgba(255, 255, 255, 0.4); }
+        .btn-card-open:hover { background-color: rgba(255, 255, 255, 0.1); }
+        #notes-view { animation: fadeIn 0.5s ease; }
+        .notes-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; position: relative; }
+        .notes-header .title-group { display: flex; align-items: center; gap: 0.4rem; }
+        .notes-header .title-group h2 { font-size: 2rem; font-weight: 600; }
+        .notes-header .btn-back { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1rem; display: flex; align-items: center; padding: 0; gap: 0.4rem; }
+        .notes-header .btn-back:hover { color: var(--text-primary); }
+        .note-actions-header { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end; }
+        .note-actions-header .btn { 
+            width: auto;
+            padding: 0.6rem 1.1rem;
+        }
+        
+        #download-notes-btn {
+            background-color: var(--surface-light);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        #download-notes-btn:hover { background-color: var(--border-color); }
+        
+        .note-actions-header .btn-danger-outline { background-color: transparent; color: #FCA5A5; border: 1px solid #FCA5A5; }
+        .note-actions-header .btn-danger-outline:hover { background-color: #EF4444; color: var(--text-primary); }
+        #add-note-form { background-color: var(--surface-dark); border-radius: var(--border-radius); padding: 1.5rem; margin-bottom: 2.5rem; border: 1px solid var(--border-color); }
+        .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; }
+        #note-tag-select { width: 100%; background-color: var(--surface-light); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 0.75rem; font-family: var(--font-family); font-size: 1rem; color: var(--text-primary); }
+        #note-tag-select:focus { outline: none; border-color: var(--accent-primary); }
+        .input-wrapper { position: relative; width: 100%; }
+        #new-note-textarea { width: 100%; min-height: 120px; background-color: var(--surface-light); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; font-family: var(--font-family); font-size: 1rem; color: var(--text-primary); resize: vertical; }
+        #new-note-textarea:focus { outline: none; border-color: var(--accent-primary); }
+        #record-note-btn { position: absolute; right: 1rem; top: 1rem; background-color: transparent; border: 2px solid var(--text-secondary); color: var(--text-secondary); width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+        #record-note-btn:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
+        #record-note-btn.is-recording { color: #EF4444; border-color: #EF4444; animation: pulse-record 1.5s infinite; }
+        @keyframes pulse-record { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        #add-note-btn { background-color: var(--accent-primary); color: var(--text-primary); }
+        #add-note-btn:hover { background-color: var(--accent-hover); }
+        #notes-list-container h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; border-bottom: 1px solid var(--surface-light); padding-bottom: 0.75rem; }
+        
+        .note-card {
+            background-color: var(--surface-dark);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column; 
+            gap: 0.75rem; 
+        }
+        
+        .note-content {
+            white-space: pre-wrap; 
+            word-wrap: break-word;
+            text-align: justify;
+            hyphens: auto; 
+        }
+
+        .note-content textarea { width: 100%; min-height: 100px; background-color: var(--surface-light); border: 1px solid var(--accent-primary); border-radius: var(--border-radius); padding: 1rem; font-family: var(--font-family); color: var(--text-primary); resize: vertical; }
+        
+        .note-item-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-self: flex-end; 
+        }
+
+        .note-item-actions button { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.5rem; border-radius: 50%; }
+        .note-item-actions button:hover { background-color: var(--surface-light); color: var(--text-primary); }
+        #empty-notes-message { text-align: center; color: var(--text-secondary); padding: 3rem; border: 2px dashed var(--border-color); border-radius: var(--border-radius); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <svg width="0" height="0" class="hidden">
+        <symbol id="icon-target" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#F87171"/><circle cx="32" cy="32" r="20" fill="#FAFAFA"/><circle cx="32" cy="32" r="12" fill="#F87171"/><circle cx="32" cy="32" r="5" fill="#38BDF8"/><path d="M42 16 L34 28 L36 30 L44 22 Z" fill="#38BDF8"/><path d="M44 22 L42 24 L36 30 L38 32 L46 24 Z" fill="#0EA5E9"/><path d="M42 16 L46 20 L44 22 L42 16 Z" fill="#7DD3FC"/></symbol>
+        <symbol id="icon-robot" viewBox="0 0 64 64"><rect x="12" y="18" width="40" height="30" rx="8" fill="#4B5563"/><rect x="16" y="22" width="32" height="22" rx="4" fill="#1F2937"/><rect x="22" y="8" width="20" height="10" rx="5" fill="#4B5563"/><circle cx="32" cy="8" r="4" fill="#60A5FA"/><circle cx="24" cy="33" r="4" fill="#34D399"/><circle cx="40" cy="33" r="4" fill="#34D399"/></symbol>
+        <symbol id="icon-plant" viewBox="0 0 64 64"><path d="M32,56 C 40,56 44,48 44,40 C 44,32 40,24 32,24 C 24,24 20,32 20,40 C 20,48 24,56 32,56 Z" fill="#34D399"/><path d="M32,24 V 8" stroke="#34D399" stroke-width="6" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 1 20,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 0 44,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/></symbol>
+        <symbol id="icon-happy" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#FBBF24"/><circle cx="24" cy="28" r="4" fill="#111827"/><circle cx="40" cy="28" r="4" fill="#111827"/><path d="M22 40 Q 32 50, 42 40" stroke="#111827" stroke-width="5" fill="none" stroke-linecap="round"/></symbol>
+        <symbol id="icon-philosophy" viewBox="0 0 64 64"><rect x="10" y="50" width="44" height="6" rx="2" fill="#D1D5DB"/><path d="M16,50 V 14 L 32,8 L 48,14 V 50" fill="#9CA3AF"/><path d="M16 14 L 32 8 L 48 14" stroke="#D1D5DB" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+        <symbol id="icon-brain" viewBox="0 0 64 64"><path d="M32,8 C 18,8 12,24 18,34 C 24,44 18,56 32,56 C 46,56 40,44 46,34 C 52,24 46,8 32,8 Z" fill="#F472B6"/><path d="M32,20 v 24" stroke="#F9A8D4" stroke-width="4" stroke-linecap="round"/><path d="M24,28 h 16" stroke="#F9A8D4" stroke-width="4" stroke-linecap="round"/></symbol>
+        <symbol id="icon-book" viewBox="0 0 64 64"><rect x="8" y="8" width="48" height="48" rx="4" fill="#60A5FA"/><rect x="16" y="16" width="32" height="4" fill="#EFF6FF"/><rect x="16" y="26" width="32" height="4" fill="#EFF6FF"/><rect x="16" y="36" width="20" height="4" fill="#EFF6FF"/></symbol>
+        <symbol id="icon-dots" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#1F2937"/><circle cx="22" cy="22" r="4" fill="#A78BFA"/><circle cx="42" cy="42" r="5" fill="#FBBF24"/><circle cx="45" cy="20" r="3" fill="#60A5FA"/><circle cx="20" cy="45" r="3" fill="#34D399"/></symbol>
+        <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></symbol>
+        <symbol id="icon-download" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21a.75.75 0 0 0 .75.75h16.5a.75.75 0 0 0 .75-.75v-3.75a.75.75 0 0 1 1.5 0V21a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 21v-3.75a.75.75 0 0 1 1.5 0ZM12.75 15.44l3.97-3.97a.75.75 0 1 0-1.06-1.06L12.75 13.31V3a.75.75 0 0 0-1.5 0v10.31L8.32 8.41a.75.75 0 1 0-1.06 1.06l3.97 3.97a.75.75 0 0 0 1.06 0Z"/></symbol>
+        <symbol id="icon-trash" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 4.478v.227a48.816 48.816 0 0 1-3.878.512.75.75 0 1 1-.256-1.478l3.878-.512a.75.75 0 0 1 .256 1.478ZM8.75 4.478v.227c-1.357-.16-2.695-.34-3.878-.512a.75.75 0 1 1 .256-1.478l3.878.512a.75.75 0 0 1-.256 1.478Z"/><path fill-rule="evenodd" d="M12 1.5A2.25 2.25 0 0 0 9.75 3.75v.443c-1.518.23-2.94.536-4.22.88a.75.75 0 0 0-.22.88l.157.387c.214.524.473.99.768 1.415C7.453 9.4 8.783 11.25 12 11.25s4.547-1.85 5.765-3.475c.295-.425.554-.89.768-1.415l.157-.387a.75.75 0 0 0-.22-.88c-1.28-.344-2.702-.65-4.22-.88V3.75A2.25 2.25 0 0 0 12 1.5Z" clip-rule="evenodd"/></symbol>
+        <symbol id="icon-microphone" viewBox="0 0 24 24" fill="currentColor"><path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" /><path d="M6 12.75A.75.75 0 0 1 6.75 12h10.5a.75.75 0 0 1 0 1.5H6.75A.75.75 0 0 1 6 12.75Z" /><path d="M12 15a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V15.75A.75.75 0 0 1 12 15Z" /><path d="M12 18.75a3 3 0 0 0 2.847-2.25H9.153a3 3 0 0 0 2.847 2.25Z" /></symbol>
+        <symbol id="icon-save" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3.75A1.5 1.5 0 0 1 4.5 2.25h9.844a1.5 1.5 0 0 1 1.06.44l4.156 4.156a1.5 1.5 0 0 1 .44 1.06V19.5A1.5 1.5 0 0 1 18.5 21H4.5A1.5 1.5 0 0 1 3 19.5v-15Z" /><path d="M8.25 15a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Z" /><path d="M12 3a.75.75 0 0 0-.75.75v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V3.75A.75.75 0 0 0 12 3Z" /></symbol>
+        <symbol id="icon-edit" viewBox="0 0 24 24" fill="currentColor"><path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a.75.75 0 0 0-.22.53v2.532a.75.75 0 0 0 .75.75H8.199a.75.75 0 0 0 .53-.22l12.15-12.15Z" /></symbol>
+    </svg>
+
+    <div class="app-container">
+        <section id="notebooks-view">
+            <header class="main-header"><h1>Experiencias de Aprendizaje</h1><p>Registra, etiqueta y organiza tus descubrimientos académicos.</p></header>
+            <div class="notebook-grid" id="notebook-grid"></div>
+        </section>
+        <section id="notes-view" class="hidden">
+            <header class="notes-header">
+                <div class="title-group"><button id="back-to-notebooks-btn" class="btn-back"><svg class="icon" width="24" height="24"><use href="#icon-arrow-left"></use></svg><span>Regresar</span></button><h2 id="notebook-title"></h2></div>
+                <div class="note-actions-header">
+                    <button id="download-notes-btn" class="btn"><svg class="icon"><use href="#icon-download"></use></svg>Aprendizajes</button>
+                    <button id="reset-notebook-btn" class="btn btn-danger-outline"><svg class="icon"><use href="#icon-trash"></use></svg>Reiniciar</button>
+                </div>
+            </header>
+            <form id="add-note-form">
+                <div class="form-row"><select id="note-tag-select"></select></div>
+                <div class="input-wrapper"><textarea id="new-note-textarea" placeholder="Escribe tu experiencia de aprendizaje aquí..."></textarea><button type="button" id="record-note-btn" title="Grabar nota de voz"><svg class="icon" width="24" height="24"><use href="#icon-microphone"></use></svg></button></div>
+                <button type="submit" id="add-note-btn" class="btn"><svg class="icon"><use href="#icon-save"></use></svg>Guardar Nota</button>
+            </form>
+            <div id="notes-list-container"><h3 id="notes-list-title"></h3><div id="notes-list"></div></div>
+        </section>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const NOTEBOOKS = {"IA & Tech": "robot", "Teoría Decisoria": "target", "Desarrollo Personal": "plant", "Felicidad": "happy", "Filosofía": "philosophy", "Neurociencia e Inteligencia": "brain", "Aprendizaje Continuo": "book", "Otros": "dots"};
+        const NOTEBOOK_EMOJIS = {"IA & Tech": "🤖", "Teoría Decisoria": "🎯", "Desarrollo Personal": "🌱", "Felicidad": "😊", "Filosofía": "🏛️", "Neurociencia e Inteligencia": "🧠", "Aprendizaje Continuo": "📚", "Otros": "🔮"};
+        const NOTE_TAGS = ["Descubrir", "Recordar", "Epifania", "Comprender", "Reflexionar", "Evaluar", "Errar", "Aplicar", "Crear", "Intuir"];
+        const NOTEBOOK_NAMES = Object.keys(NOTEBOOKS);
+        let appData = {}, currentNotebook = null;
+        
+        const notebooksView = document.getElementById('notebooks-view'), notesView = document.getElementById('notes-view'), notebookGrid = document.getElementById('notebook-grid'), notesList = document.getElementById('notes-list'), notesListTitle = document.getElementById('notes-list-title'), notebookTitle = document.getElementById('notebook-title'), backBtn = document.getElementById('back-to-notebooks-btn'), downloadBtn = document.getElementById('download-notes-btn'), resetBtn = document.getElementById('reset-notebook-btn'), recordBtn = document.getElementById('record-note-btn'), addNoteForm = document.getElementById('add-note-form'), newNoteTextarea = document.getElementById('new-note-textarea'), tagSelect = document.getElementById('note-tag-select');
+
+        const loadData = () => { const savedData = localStorage.getItem('learningJournalDataV6'); appData = savedData ? JSON.parse(savedData) : {}; NOTEBOOK_NAMES.forEach(name => { if (!appData[name]) appData[name] = []; }); saveData(); };
+        const saveData = () => localStorage.setItem('learningJournalDataV6', JSON.stringify(appData));
+        const populateTagSelector = () => { tagSelect.innerHTML = `<option value="">Selecciona una etiqueta...</option>`; NOTE_TAGS.forEach(tag => { tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`; }); };
+        
+        const renderNotebooksView = () => {
+            notebookGrid.innerHTML = '';
+            NOTEBOOK_NAMES.forEach(name => {
+                const noteCount = appData[name] ? appData[name].length : 0, iconId = NOTEBOOKS[name] || "dots";
+                const card = document.createElement('div'); card.className = 'notebook-card'; card.dataset.notebook = name;
+                card.innerHTML = `<div><div class="icon-container"><svg class="icon"><use href="#icon-${iconId}"></use></svg></div><h3>${name}</h3><div class="note-count">${noteCount} nota${noteCount !== 1 ? 's' : ''}</div></div><button class="btn btn-card-open">Abrir Cuaderno</button>`;
+                card.addEventListener('click', () => showNotesView(name)); notebookGrid.appendChild(card);
+            });
+            notesView.classList.add('hidden'); notebooksView.classList.remove('hidden');
+        };
+
+        const renderNotesList = () => {
+            notesList.innerHTML = ''; const notes = appData[currentNotebook] || [];
+            notesListTitle.textContent = `Notas de Aprendizaje (${notes.length})`;
+            if (notes.length === 0) { notesList.innerHTML = `<div id="empty-notes-message"><p>Aún no hay notas. ¡Usa el formulario para empezar!</p></div>`; return; }
+            notes.forEach((note, index) => {
+                const noteCard = document.createElement('div'); noteCard.className = 'note-card';
+                noteCard.innerHTML = `<div class="note-content">${note.replace(/</g, "<").replace(/>/g, ">")}</div><div class="note-item-actions"><button title="Editar" data-action="edit" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-edit"></use></svg></button><button title="Borrar" data-action="delete" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-trash"></use></svg></button></div>`;
+                notesList.appendChild(noteCard);
+            });
+        };
+
+        const showNotesView = (name) => { currentNotebook = name; notebookTitle.textContent = currentNotebook; renderNotesList(); notebooksView.classList.add('hidden'); notesView.classList.remove('hidden'); };
+        const showNotebooksView = () => { currentNotebook = null; notesView.classList.add('hidden'); notebooksView.classList.remove('hidden'); renderNotebooksView(); };
+
+        const addNote = () => {
+            const content = newNoteTextarea.value.trim();
+            const tag = tagSelect.value;
+            
+            if (!tag) { alert('Por favor, selecciona una etiqueta para la nota.'); return; }
+            if (!content) { alert('Por favor, escribe el contenido de la nota.'); return; }
+            
+            const now = new Date(), day = String(now.getDate()).padStart(2, '0'), month = String(now.getMonth() + 1).padStart(2, '0'), year = now.getFullYear().toString().slice(-2);
+            const dateStr = `(${day}-${month}-${year}).`;
+            const tagStr = `**${tag}:** `;
+            const fullNote = `${tagStr}${dateStr} ${content}`;
+            
+            appData[currentNotebook].unshift(fullNote); 
+            saveData(); 
+            renderNotesList();
+            
+            if (appData[currentNotebook].length === 12) {
+                alert('¡Felicidades! Has alcanzado 12 notas.\n\nLa próxima vez que descargues el PDF, se incluirá un resumen generado por IA.');
+            }
+
+            newNoteTextarea.value = ''; tagSelect.selectedIndex = 0;
+        };
+
+        const editNote = (index) => { const noteCard = notesList.children[index], contentDiv = noteCard.querySelector('.note-content'); contentDiv.innerHTML = `<textarea>${appData[currentNotebook][index]}</textarea>`; noteCard.querySelector('textarea').focus(); const actionsDiv = noteCard.querySelector('.note-item-actions'); actionsDiv.innerHTML = `<button title="Guardar" data-action="save" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-save"></use></svg></button>`; };
+        const saveEditedNote = (index) => { const textarea = notesList.children[index].querySelector('textarea'); appData[currentNotebook][index] = textarea.value; saveData(); renderNotesList(); };
+        const deleteNote = (index) => { if (confirm('¿Borrar esta nota?')) { appData[currentNotebook].splice(index, 1); saveData(); renderNotesList(); } };
+        
+        const downloadPdf = async () => {
+            const originalBtnContent = downloadBtn.innerHTML;
+            downloadBtn.disabled = true;
+
+            try {
+                const notes = appData[currentNotebook]; 
+                if (notes.length === 0) { alert('Este cuaderno está vacío.'); return; }
+                if (!window.jspdf) { alert('Librería PDF no cargada.'); return; }
+
+                let aiSummary = null;
+                if (notes.length >= 12) {
+                    downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-brain"></use></svg> Generando...`;
+                    aiSummary = await getAiSummary(notes.slice(0, 12));
+                }
+                
+                downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-download"></use></svg> Descargando...`;
+
+                const { jsPDF } = window.jspdf; 
+                const doc = new jsPDF({ unit: 'mm', format: 'a4' }); 
+                const pageMargin = 25; 
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const centerX = pageWidth / 2;
+                let currentY = 30;
+                const textMaxWidth = pageWidth - (pageMargin * 2);
+
+                doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.text("Experiencias de Aprendizaje", centerX, currentY, { align: 'center' }); currentY += 12;
+                doc.setFontSize(14); doc.setFont('helvetica', 'italic'); doc.setTextColor(100); doc.text("El Saber como Universo Inconmensurable", centerX, currentY, { align: 'center' }); currentY += 12;
+                doc.setFontSize(16); doc.setFont('helvetica', 'normal'); doc.setTextColor(0); 
+                doc.text(currentNotebook, centerX, currentY, { align: 'center' }); 
+                currentY += 15;
+
+                if (aiSummary) {
+                    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+                    doc.text("Resumen de Aprendizajes (IA)", pageMargin, currentY);
+                    currentY += 7;
+
+                    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+                    // [SOLUCIÓN] Pasar el string completo del resumen a doc.text con maxWidth para una justificación correcta.
+                    doc.text(aiSummary, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
+                    const summaryLines = doc.splitTextToSize(aiSummary, textMaxWidth);
+                    currentY += (summaryLines.length * 5) + 10;
+                    
+                    doc.setDrawColor(200);
+                    doc.line(pageMargin, currentY - 5, pageWidth - pageMargin, currentY - 5);
+                }
+                
+                notes.forEach(note => {
+                    const cleanNote = note.replace(/\*\*/g, ''); 
+                    const textLines = doc.splitTextToSize(cleanNote, textMaxWidth);
+                    const lineHeight = 5; 
+                    const blockHeight = textLines.length * lineHeight;
+                    if (currentY + blockHeight > pageHeight - pageMargin) { doc.addPage(); currentY = pageMargin; }
+                    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+                    doc.text(cleanNote, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
+                    currentY += blockHeight + 5; 
+                });
+                doc.save(`Experiencias_${currentNotebook.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+            
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = originalBtnContent;
+            }
+        };
+
+        async function getAiSummary(notes) {
+            const API_KEY = 'AIzaSyDMiA7QVEubhAwBfToV4EP6TE5_xiy3Ohc';
+            
+            if (!window.GoogleGenerativeAI) {
+                alert('El SDK de Google AI no se ha cargado.');
+                return null;
+            }
+
+            try {
+                const genAI = new window.GoogleGenerativeAI(API_KEY);
+                
+                const safetySettings = [
+                    { category: window.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                    { category: window.HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                    { category: window.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                    { category: window.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                ];
+
+                const model = genAI.getGenerativeModel({ 
+                    model: "gemini-1.5-flash-latest", 
+                    safetySettings 
+                });
+
+                const textToSummarize = notes.map(note => note.replace(/\*\*[^*]+\*\* /, '')).join('\n---\n');
+                const prompt = `Resume los siguientes 12 aprendizajes en un párrafo conciso y claro. Extrae las ideas principales, los patrones y la conexión entre ellos para sintetizar el conocimiento adquirido:\n\n${textToSummarize}`;
+
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                
+                if (!response.text) {
+                    throw new Error('La respuesta de la IA fue bloqueada o está vacía. Revisa los detalles en la consola.');
+                }
+                
+                return response.text();
+
+            } catch (error) {
+                console.error('Error al generar el resumen:', error);
+                const errorMessage = error.message || "Error desconocido.";
+                alert(`No se pudo generar el resumen. Revisa la consola para más detalles.\n\nError: ${errorMessage}`);
+                return null;
+            }
+        }
+        
+        const resetNotebook = () => { if (confirm(`¿BORRAR TODAS LAS NOTAS de "${currentNotebook}"?`)) { appData[currentNotebook] = []; saveData(); renderNotesList(); } };
+        backBtn.addEventListener('click', showNotebooksView); addNoteForm.addEventListener('submit', (e) => { e.preventDefault(); addNote(); });
+        downloadBtn.addEventListener('click', downloadPdf);
+        resetBtn.addEventListener('click', resetNotebook);
+        notesList.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; const action = button.dataset.action, index = parseInt(button.dataset.index); if (action === 'edit') editNote(index); else if (action === 'delete') deleteNote(index); else if (action === 'save') saveEditedNote(index); });
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) { const recognition = new SpeechRecognition(); recognition.lang = 'es-ES'; recognition.onstart = () => recordBtn.classList.add('is-recording'); recognition.onend = () => recordBtn.classList.remove('is-recording'); recognition.onresult = (e) => { newNoteTextarea.value += ' ' + e.results[e.results.length - 1][0].transcript.trim(); }; recordBtn.addEventListener('click', () => recognition.start());
+        } else { recordBtn.disabled = true; }
+
+        loadData(); populateTagSelector(); renderNotebooksView();
+    });
+    </script>
+</body>
+</html>
