@@ -127,7 +127,6 @@
         <symbol id="icon-microphone" viewBox="0 0 24 24" fill="currentColor"><path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" /><path d="M6 12.75A.75.75 0 0 1 6.75 12h10.5a.75.75 0 0 1 0 1.5H6.75A.75.75 0 0 1 6 12.75Z" /><path d="M12 15a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V15.75A.75.75 0 0 1 12 15Z" /><path d="M12 18.75a3 3 0 0 0 2.847-2.25H9.153a3 3 0 0 0 2.847 2.25Z" /></symbol>
         <symbol id="icon-save" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3.75A1.5 1.5 0 0 1 4.5 2.25h9.844a1.5 1.5 0 0 1 1.06.44l4.156 4.156a1.5 1.5 0 0 1 .44 1.06V19.5A1.5 1.5 0 0 1 18.5 21H4.5A1.5 1.5 0 0 1 3 19.5v-15Z" /><path d="M8.25 15a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Z" /><path d="M12 3a.75.75 0 0 0-.75.75v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V3.75A.75.75 0 0 0 12 3Z" /></symbol>
         <symbol id="icon-edit" viewBox="0 0 24 24" fill="currentColor"><path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a.75.75 0 0 0-.22.53v2.532a.75.75 0 0 0 .75.75H8.199a.75.75 0 0 0 .53-.22l12.15-12.15Z" /></symbol>
-        <!-- New Icon -->
         <symbol id="icon-cloud-upload" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M10.5 1.5A5.25 5.25 0 0 0 5.25 6.75c0 2.016 1.135 3.766 2.83 4.656A4.505 4.505 0 0 0 4.5 15.75a4.5 4.5 0 0 0 8.716 1.442A5.25 5.25 0 0 0 18.75 16.5a5.25 5.25 0 0 0-5.25-5.25c-.99 0-1.91.256-2.695.706A5.232 5.232 0 0 0 10.5 1.5Zm2.25 9.75a.75.75 0 0 0-1.5 0v2.565l-.32-.32a.75.75 0 0 0-1.06 1.06l1.5 1.5a.75.75 0 0 0 1.06 0l1.5-1.5a.75.75 0 1 0-1.06-1.06l-.32.32V11.25Z" clip-rule="evenodd" /></symbol>
     </svg>
 
@@ -140,7 +139,10 @@
             <header class="notes-header">
                 <div class="title-group"><button id="back-to-notebooks-btn" class="btn-back"><svg class="icon" width="24" height="24"><use href="#icon-arrow-left"></use></svg><span>Regresar</span></button><h2 id="notebook-title"></h2></div>
                 <div class="note-actions-header">
-                    <button id="sync-docs-btn" class="btn"><svg class="icon"><use href="#icon-cloud-upload"></use></svg>Sincronizar Docs</button>
+                    <!-- BOTÓN MODIFICADO: Inicia desactivado y con texto de carga -->
+                    <button id="sync-docs-btn" class="btn" disabled>
+                        <svg class="icon"><use href="#icon-cloud-upload"></use></svg>Cargando APIs...
+                    </button>
                     <button id="download-notes-btn" class="btn"><svg class="icon"><use href="#icon-download"></use></svg>Aprendizajes</button>
                     <button id="reset-notebook-btn" class="btn btn-danger-outline"><svg class="icon"><use href="#icon-trash"></use></svg>Reiniciar</button>
                 </div>
@@ -155,15 +157,11 @@
     </div>
 
     <script>
-    // === CONFIGURACIÓN DE APIS (LLENAR CON TUS DATOS) ===
-    // ID de Cliente OAuth 2.0 de Google Cloud
+    // === CONFIGURACIÓN DE APIS ===
     const CLIENT_ID = '773016062043-aihqt4olbdkoogo5a86srjll3dj0bmvk.apps.googleusercontent.com';
-    // API Key de Google Cloud (debe tener habilitada Google Docs API)
-    const API_KEY_GEMINI = 'AIzaSyDMiA7QVEubhAwBfToV4EP6TE5_xiy3Ohc'; // Para IA Gemini
-    const API_KEY_DOCS = 'AIzaSyDMiA7QVEubhAwBfToV4EP6TE5_xiy3Ohc'; // Para Google Docs (puede ser la misma)
-    // ID del Documento de Google Docs (extraído de la URL)
+    const API_KEY_GEMINI = 'AIzaSyDMiA7QVEubhAwBfToV4EP6TE5_xiy3Ohc';
+    const API_KEY_DOCS = 'AIzaSyDMiA7QVEubhAwBfToV4EP6TE5_xiy3Ohc';
     const DOCUMENT_ID = '1ZQTvlAHZpME_XfoCx6WNu1sNJEntwaOr-a-PF1lQMvE';
-    // Permiso que se solicitará al usuario
     const SCOPES = 'https://www.googleapis.com/auth/documents';
 
     // === INICIALIZACIÓN DE LA APLICACIÓN ===
@@ -171,28 +169,37 @@
     let gapiInited = false;
     let gisInited = false;
 
-    // === FUNCIONES DE INICIALIZACIÓN DE GOOGLE API ===
-    // Callback cuando se carga gapi (Google API Client Library)
+    // === NUEVA FUNCIÓN PARA VERIFICAR Y ACTIVAR EL BOTÓN ===
+    function checkApisReadyAndEnableButton() {
+        const syncBtn = document.getElementById('sync-docs-btn');
+        if (gapiInited && gisInited && syncBtn) {
+            syncBtn.disabled = false;
+            syncBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>Sincronizar Docs`;
+        }
+    }
+
+    // === FUNCIONES DE INICIALIZACIÓN DE GOOGLE API (MODIFICADAS) ===
     window.gapiLoaded = () => gapi.load('client', initializeGapiClient);
-    // Callback cuando se carga gis (Google Identity Services)
     window.gisLoaded = () => {
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID,
             scope: SCOPES,
-            callback: '', // El callback se maneja en la promesa de requestAccessToken
+            callback: '', 
         });
         gisInited = true;
+        checkApisReadyAndEnableButton(); // Verifica si gapi ya está lista
     };
-    // Inicializa el cliente para la API de Google Docs
     async function initializeGapiClient() {
         await gapi.client.init({
             apiKey: API_KEY_DOCS,
             discoveryDocs: ['https://docs.googleapis.com/$discovery/rest?version=v1'],
         });
         gapiInited = true;
+        checkApisReadyAndEnableButton(); // Verifica si gis ya está lista
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        // ... El resto del código es el mismo, pero lo incluyo completo para facilidad ...
         const NOTEBOOKS = {"IA & Tech": "robot", "Teoría Decisoria": "target", "Desarrollo Personal": "plant", "Felicidad": "happy", "Filosofía": "philosophy", "Neurociencia e Inteligencia": "brain", "Aprendizaje Continuo": "book", "Otros": "dots"};
         const NOTEBOOK_EMOJIS = {"IA & Tech": "🤖", "Teoría Decisoria": "🎯", "Desarrollo Personal": "🌱", "Felicidad": "😊", "Filosofía": "🏛️", "Neurociencia e Inteligencia": "🧠", "Aprendizaje Continuo": "📚", "Otros": "🔮"};
         const NOTE_TAGS = ["Descubrir", "Recordar", "Epifania", "Comprender", "Reflexionar", "Evaluar", "Errar", "Aplicar", "Crear", "Intuir"];
@@ -252,18 +259,12 @@
         const saveEditedNote = (index) => { const textarea = notesList.children[index].querySelector('textarea'); appData[currentNotebook][index] = textarea.value; saveData(); renderNotesList(); };
         const deleteNote = (index) => { if (confirm('¿Borrar esta nota?')) { appData[currentNotebook].splice(index, 1); saveData(); renderNotesList(); } };
         
-        // --- FUNCIÓN PARA SINCRONIZAR CON GOOGLE DOCS ---
         const syncToGoogleDocs = async () => {
             const originalBtnContent = syncDocsBtn.innerHTML;
             syncDocsBtn.disabled = true;
-            syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg> Preparando...`;
             
-            if (!gapiInited || !gisInited) {
-                alert('Las APIs de Google no se han cargado completamente. Inténtalo de nuevo en unos segundos.');
-                syncDocsBtn.disabled = false;
-                syncDocsBtn.innerHTML = originalBtnContent;
-                return;
-            }
+            // La verificación inicial ya no es necesaria aquí, porque el botón no se puede clickear si no están listas.
+            // if (!gapiInited || !gisInited) { ... }
 
             const notesToSync = appData[currentNotebook];
             if (!notesToSync || notesToSync.length === 0) {
@@ -274,7 +275,7 @@
             }
             
             try {
-                // Paso 1: Obtener token de acceso (pide login si es necesario)
+                syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg> Autorizando...`;
                 await new Promise((resolve, reject) => {
                     try {
                         tokenClient.callback = (resp) => {
@@ -282,36 +283,33 @@
                             gapi.client.setToken(resp);
                             resolve(resp);
                         };
-                        tokenClient.requestAccessToken({ prompt: 'consent' });
+                        if (gapi.client.getToken() === null) {
+                            tokenClient.requestAccessToken({ prompt: 'consent' });
+                        } else {
+                            tokenClient.requestAccessToken({ prompt: '' });
+                        }
                     } catch (err) { reject(err); }
                 });
 
                 syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg> Sincronizando...`;
 
-                // Paso 2: Formatear las notas para la API
                 const noteParsingRegex = /\*\*(.*?):\*\* \((.*?)\)\. (.*)/s;
                 const formattedNotesText = notesToSync.map(note => {
                     const match = note.match(noteParsingRegex);
                     if (match) {
                         const [, tag, date, content] = match;
+                        // Formato: Contenido, (Nombre del Libro), "Etiqueta"
                         return `${content.trim()}\n\n(${currentNotebook})\n"${tag.trim()}"`;
                     }
-                    return note; // Si no coincide, manda la nota original
+                    return note;
                 }).join('\n\n---\n\n');
 
-                const fullTextToInsert = `\n\n${formattedNotesText}\n\n`;
+                const fullTextToInsert = `\n\n---\n\n${formattedNotesText}\n\n`;
 
-                // Paso 3: Obtener la longitud del documento para insertar al final
                 const doc = await gapi.client.docs.documents.get({ documentId: DOCUMENT_ID });
                 const docLength = doc.result.body.content.slice(-1)[0].endIndex;
 
-                // Paso 4: Construir y enviar la petición a la API de Docs
-                const requests = [{
-                    insertText: {
-                        text: fullTextToInsert,
-                        location: { index: docLength - 1 }
-                    }
-                }];
+                const requests = [{ insertText: { text: fullTextToInsert, location: { index: docLength - 1 } } }];
                 await gapi.client.docs.documents.batchUpdate({ documentId: DOCUMENT_ID, resource: { requests } });
                 
                 alert(`¡Éxito! ${notesToSync.length} nota(s) han sido sincronizadas con tu Google Doc.`);
@@ -330,11 +328,10 @@
         async function getAiSummary(notes) { /* ... (código existente sin cambios) ... */ };
         const resetNotebook = () => { if (confirm(`¿BORRAR TODAS LAS NOTAS de "${currentNotebook}"?`)) { appData[currentNotebook] = []; saveData(); renderNotesList(); } };
         
-        // EVENT LISTENERS
         backBtn.addEventListener('click', showNotebooksView);
         addNoteForm.addEventListener('submit', (e) => { e.preventDefault(); addNote(); });
         downloadBtn.addEventListener('click', downloadPdf);
-        syncDocsBtn.addEventListener('click', syncToGoogleDocs); // <-- Nuevo Event Listener
+        syncDocsBtn.addEventListener('click', syncToGoogleDocs);
         resetBtn.addEventListener('click', resetNotebook);
         notesList.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; const action = button.dataset.action, index = parseInt(button.dataset.index); if (action === 'edit') editNote(index); else if (action === 'delete') deleteNote(index); else if (action === 'save') saveEditedNote(index); });
         
