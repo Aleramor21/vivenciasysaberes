@@ -11,10 +11,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
-    <!-- Google API & Identity Services Scripts. Las funciones de callback se asignarán a window desde el script de módulo -->
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-
     <style>
         :root {
             --bg-dark: #111827; --card-bg: #4f46e5; --surface-dark: #1F2937; --surface-light: #374151; --border-color: #4B5563;
@@ -73,6 +69,7 @@
 </head>
 <body>
     <svg width="0" height="0" class="hidden">
+        <symbol id="icon-user" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" /></symbol>
         <symbol id="icon-target" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#F87171"/><circle cx="32" cy="32" r="20" fill="#FAFAFA"/><circle cx="32" cy="32" r="12" fill="#F87171"/><circle cx="32" cy="32" r="5" fill="#38BDF8"/><path d="M42 16 L34 28 L36 30 L44 22 Z" fill="#38BDF8"/><path d="M44 22 L42 24 L36 30 L38 32 L46 24 Z" fill="#0EA5E9"/><path d="M42 16 L46 20 L44 22 L42 16 Z" fill="#7DD3FC"/></symbol>
         <symbol id="icon-robot" viewBox="0 0 64 64"><rect x="12" y="18" width="40" height="30" rx="8" fill="#4B5563"/><rect x="16" y="22" width="32" height="22" rx="4" fill="#1F2937"/><rect x="22" y="8" width="20" height="10" rx="5" fill="#4B5563"/><circle cx="32" cy="8" r="4" fill="#60A5FA"/><circle cx="24" cy="33" r="4" fill="#34D399"/><circle cx="40" cy="33" r="4" fill="#34D399"/></symbol>
         <symbol id="icon-plant" viewBox="0 0 64 64"><path d="M32,56 C 40,56 44,48 44,40 C 44,32 40,24 32,24 C 24,24 20,32 20,40 C 20,48 24,56 32,56 Z" fill="#34D399"/><path d="M32,24 V 8" stroke="#34D399" stroke-width="6" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 1 20,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 0 44,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/></symbol>
@@ -98,7 +95,7 @@
             <header class="notes-header">
                 <div class="title-group"><button id="back-to-notebooks-btn" class="btn-back"><svg class="icon" width="24" height="24"><use href="#icon-arrow-left"></use></svg><span>Regresar</span></button><h2 id="notebook-title"></h2></div>
                 <div class="note-actions-header">
-                    <button id="sync-docs-btn" class="btn" disabled><svg class="icon"><use href="#icon-cloud-upload"></use></svg>Cargando APIs...</button>
+                    <button id="sync-docs-btn" class="btn" disabled><svg class="icon"><use href="#icon-user"></use></svg>Cargando APIs...</button>
                     <button id="download-notes-btn" class="btn"><svg class="icon"><use href="#icon-download"></use></svg>Aprendizajes</button>
                     <button id="reset-notebook-btn" class="btn btn-danger-outline"><svg class="icon"><use href="#icon-trash"></use></svg>Reiniciar</button>
                 </div>
@@ -112,7 +109,7 @@
         </section>
     </div>
 
-    <!-- SCRIPT PRINCIPAL DE TIPO MÓDULO PARA UNA CARGA ROBUSTA -->
+    <!-- SCRIPT PRINCIPAL DE TIPO MÓDULO -->
     <script type="module">
         import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "https://esm.run/@google/generative-ai";
 
@@ -124,252 +121,266 @@
 
         // === INICIALIZACIÓN DE APIS CON PROMISES ===
         let tokenClient;
-        let resolveGapiPromise, resolveGisPromise;
-        const gapiPromise = new Promise(resolve => { resolveGapiPromise = resolve; });
-        const gisPromise = new Promise(resolve => { resolveGisPromise = resolve; });
-
-        // Asignar callbacks al objeto global `window` para que los scripts externos puedan llamarlas
-        window.gapiLoaded = () => {
-            gapi.load('client', async () => {
-                try {
+        const gapiPromise = new Promise(resolve => {
+            window.gapiLoaded = () => {
+                gapi.load('client', async () => {
                     await gapi.client.init({
                         apiKey: API_KEY,
                         discoveryDocs: ['https://docs.googleapis.com/$discovery/rest?version=v1'],
                     });
-                    resolveGapiPromise();
-                } catch (error) {
-                    console.error("Error inicializando GAPI client (Docs):", error);
-                }
-            });
-        };
-
-        window.gisLoaded = () => {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: '',
-            });
-            resolveGisPromise();
-        };
-
-        // === CONSTANTES Y VARIABLES DE LA APP ===
-        const NOTEBOOKS = {"IA & Tech": "robot", "Teoría Decisoria": "target", "Desarrollo Personal": "plant", "Felicidad": "happy", "Filosofía": "philosophy", "Neurociencia e Inteligencia": "brain", "Aprendizaje Continuo": "book", "Otros": "dots"};
-        const NOTE_TAGS = ["Descubrir", "Recordar", "Epifania", "Comprender", "Reflexionar", "Evaluar", "Errar", "Aplicar", "Crear", "Intuir"];
-        const NOTEBOOK_NAMES = Object.keys(NOTEBOOKS);
-        let appData = {}, currentNotebook = null;
-        
-        // === SELECTORES DEL DOM ===
-        const notebooksView = document.getElementById('notebooks-view'), notesView = document.getElementById('notes-view'), notebookGrid = document.getElementById('notebook-grid'), notesList = document.getElementById('notes-list'), notesListTitle = document.getElementById('notes-list-title'), notebookTitle = document.getElementById('notebook-title'), backBtn = document.getElementById('back-to-notebooks-btn'), downloadBtn = document.getElementById('download-notes-btn'), resetBtn = document.getElementById('reset-notebook-btn'), recordBtn = document.getElementById('record-note-btn'), addNoteForm = document.getElementById('add-note-form'), newNoteTextarea = document.getElementById('new-note-textarea'), tagSelect = document.getElementById('note-tag-select'), syncDocsBtn = document.getElementById('sync-docs-btn');
-
-        // === LÓGICA DE INICIALIZACIÓN DE APIS ===
-        Promise.all([gapiPromise, gisPromise]).then(() => {
-            console.log("Google APIs (GSI y GAPI) están listas.");
-            syncDocsBtn.disabled = false;
-            syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>Sincronizar Docs`;
-        }).catch(error => {
-            console.error("Error crítico al cargar las APIs de Google:", error);
-            syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>Error de API`;
-            alert("No se pudieron cargar las APIs de Google. Por favor, revisa la consola y la configuración de la API Key en Google Cloud.");
+                    resolve();
+                });
+            };
+        });
+        const gisPromise = new Promise(resolve => {
+            window.gisLoaded = () => {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: '',
+                });
+                resolve();
+            };
         });
 
-        // === FUNCIONES PRINCIPALES DE LA APP ===
-        const loadData = () => { const savedData = localStorage.getItem('learningJournalDataV6'); appData = savedData ? JSON.parse(savedData) : {}; NOTEBOOK_NAMES.forEach(name => { if (!appData[name]) appData[name] = []; }); saveData(); };
-        const saveData = () => localStorage.setItem('learningJournalDataV6', JSON.stringify(appData));
-        const populateTagSelector = () => { tagSelect.innerHTML = `<option value="">Selecciona una etiqueta...</option>`; NOTE_TAGS.forEach(tag => { tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`; }); };
-        
-        const renderNotebooksView = () => {
-            notebookGrid.innerHTML = '';
-            NOTEBOOK_NAMES.forEach(name => {
-                const noteCount = appData[name] ? appData[name].length : 0, iconId = NOTEBOOKS[name] || "dots";
-                const card = document.createElement('div'); card.className = 'notebook-card'; card.dataset.notebook = name;
-                card.innerHTML = `<div><div class="icon-container"><svg class="icon"><use href="#icon-${iconId}"></use></svg></div><h3>${name}</h3><div class="note-count">${noteCount} nota${noteCount !== 1 ? 's' : ''}</div></div><button class="btn btn-card-open">Abrir Cuaderno</button>`;
-                card.addEventListener('click', () => showNotesView(name)); notebookGrid.appendChild(card);
-            });
-            notesView.classList.add('hidden'); notebooksView.classList.remove('hidden');
-        };
+        // Carga dinámica de los scripts de Google
+        (function loadGoogleScripts() {
+            const gapiScript = document.createElement('script');
+            gapiScript.src = 'https://apis.google.com/js/api.js?onload=gapiLoaded';
+            gapiScript.async = true;
+            gapiScript.defer = true;
+            document.head.appendChild(gapiScript);
 
-        const renderNotesList = () => {
-            notesList.innerHTML = ''; const notes = appData[currentNotebook] || [];
-            notesListTitle.textContent = `Notas de Aprendizaje (${notes.length})`;
-            if (notes.length === 0) { notesList.innerHTML = `<div id="empty-notes-message"><p>Aún no hay notas. ¡Usa el formulario para empezar!</p></div>`; return; }
-            notes.forEach((note, index) => {
-                const noteCard = document.createElement('div'); noteCard.className = 'note-card';
-                noteCard.innerHTML = `<div class="note-content">${note.replace(/</g, "<").replace(/>/g, ">")}</div><div class="note-item-actions"><button title="Editar" data-action="edit" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-edit"></use></svg></button><button title="Borrar" data-action="delete" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-trash"></use></svg></button></div>`;
-                notesList.appendChild(noteCard);
-            });
-        };
+            const gisScript = document.createElement('script');
+            gisScript.src = 'https://accounts.google.com/gsi/client?onload=gisLoaded';
+            gisScript.async = true;
+            gisScript.defer = true;
+            document.head.appendChild(gisScript);
+        })();
 
-        const showNotesView = (name) => { currentNotebook = name; notebookTitle.textContent = currentNotebook; renderNotesList(); notebooksView.classList.add('hidden'); notesView.classList.remove('hidden'); };
-        const showNotebooksView = () => { currentNotebook = null; notesView.classList.add('hidden'); notebooksView.classList.remove('hidden'); renderNotebooksView(); };
-
-        const addNote = () => {
-            const content = newNoteTextarea.value.trim();
-            const tag = tagSelect.value;
-            if (!tag) { alert('Por favor, selecciona una etiqueta para la nota.'); return; }
-            if (!content) { alert('Por favor, escribe el contenido de la nota.'); return; }
-            const now = new Date(), day = String(now.getDate()).padStart(2, '0'), month = String(now.getMonth() + 1).padStart(2, '0'), year = now.getFullYear().toString().slice(-2);
-            const dateStr = `(${day}-${month}-${year}).`;
-            const tagStr = `**${tag}:** `;
-            const fullNote = `${tagStr}${dateStr} ${content}`;
-            appData[currentNotebook].unshift(fullNote); 
-            saveData(); 
-            renderNotesList();
-            if (appData[currentNotebook].length === 12) {
-                alert('¡Felicidades! Has alcanzado 12 notas.\n\nLa próxima vez que descargues el PDF, se incluirá un resumen generado por IA.');
-            }
-            newNoteTextarea.value = ''; tagSelect.selectedIndex = 0;
-        };
-
-        const editNote = (index) => { const noteCard = notesList.children[index], contentDiv = noteCard.querySelector('.note-content'); contentDiv.innerHTML = `<textarea>${appData[currentNotebook][index]}</textarea>`; noteCard.querySelector('textarea').focus(); const actionsDiv = noteCard.querySelector('.note-item-actions'); actionsDiv.innerHTML = `<button title="Guardar" data-action="save" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-save"></use></svg></button>`; };
-        const saveEditedNote = (index) => { const textarea = notesList.children[index].querySelector('textarea'); appData[currentNotebook][index] = textarea.value; saveData(); renderNotesList(); };
-        const deleteNote = (index) => { if (confirm('¿Borrar esta nota?')) { appData[currentNotebook].splice(index, 1); saveData(); renderNotesList(); } };
-        
-        const syncToGoogleDocs = async () => {
-            const originalBtnText = `Sincronizar Docs`;
-            syncDocsBtn.disabled = true;
+        // El resto del código se ejecuta cuando el DOM esté listo.
+        document.addEventListener('DOMContentLoaded', () => {
+            // === CONSTANTES Y VARIABLES DE LA APP ===
+            const NOTEBOOKS = {"IA & Tech": "robot", "Teoría Decisoria": "target", "Desarrollo Personal": "plant", "Felicidad": "happy", "Filosofía": "philosophy", "Neurociencia e Inteligencia": "brain", "Aprendizaje Continuo": "book", "Otros": "dots"};
+            const NOTE_TAGS = ["Descubrir", "Recordar", "Epifania", "Comprender", "Reflexionar", "Evaluar", "Errar", "Aplicar", "Crear", "Intuir"];
+            const NOTEBOOK_NAMES = Object.keys(NOTEBOOKS);
+            let appData = {}, currentNotebook = null;
             
-            const notesToSync = appData[currentNotebook];
-            if (!notesToSync || notesToSync.length === 0) {
-                alert('Este cuaderno está vacío. No hay nada que sincronizar.');
+            // === SELECTORES DEL DOM ===
+            const notebooksView = document.getElementById('notebooks-view'), notesView = document.getElementById('notes-view'), notebookGrid = document.getElementById('notebook-grid'), notesList = document.getElementById('notes-list'), notesListTitle = document.getElementById('notes-list-title'), notebookTitle = document.getElementById('notebook-title'), backBtn = document.getElementById('back-to-notebooks-btn'), downloadBtn = document.getElementById('download-notes-btn'), resetBtn = document.getElementById('reset-notebook-btn'), recordBtn = document.getElementById('record-note-btn'), addNoteForm = document.getElementById('add-note-form'), newNoteTextarea = document.getElementById('new-note-textarea'), tagSelect = document.getElementById('note-tag-select'), syncDocsBtn = document.getElementById('sync-docs-btn');
+
+            // === LÓGICA DE INICIALIZACIÓN DEL BOTÓN ===
+            Promise.all([gapiPromise, gisPromise]).then(() => {
+                console.log("Google APIs (GSI y GAPI) están listas.");
                 syncDocsBtn.disabled = false;
-                return;
-            }
+                syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>Sincronizar Docs`;
+            }).catch(error => {
+                console.error("Error crítico al cargar las APIs de Google:", error);
+                syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-user"></use></svg>Error de API`;
+                alert("No se pudieron cargar las APIs de Google. Por favor, revisa la consola y la configuración de la API Key en Google Cloud.");
+            });
+
+            // === FUNCIONES PRINCIPALES DE LA APP ===
+            const loadData = () => { const savedData = localStorage.getItem('learningJournalDataV6'); appData = savedData ? JSON.parse(savedData) : {}; NOTEBOOK_NAMES.forEach(name => { if (!appData[name]) appData[name] = []; }); saveData(); };
+            const saveData = () => localStorage.setItem('learningJournalDataV6', JSON.stringify(appData));
+            const populateTagSelector = () => { tagSelect.innerHTML = `<option value="">Selecciona una etiqueta...</option>`; NOTE_TAGS.forEach(tag => { tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`; }); };
             
-            try {
-                syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg> Autorizando...`;
-                await new Promise((resolve, reject) => {
-                    tokenClient.callback = (response) => {
-                        if (response.error) { return reject(response); }
-                        gapi.client.setToken(response);
-                        resolve(response);
-                    };
-                    if (gapi.client.getToken() === null) {
-                        tokenClient.requestAccessToken({ prompt: 'consent' });
-                    } else {
-                        tokenClient.requestAccessToken({ prompt: '' });
-                    }
+            const renderNotebooksView = () => {
+                notebookGrid.innerHTML = '';
+                NOTEBOOK_NAMES.forEach(name => {
+                    const noteCount = appData[name] ? appData[name].length : 0, iconId = NOTEBOOKS[name] || "dots";
+                    const card = document.createElement('div'); card.className = 'notebook-card'; card.dataset.notebook = name;
+                    card.innerHTML = `<div><div class="icon-container"><svg class="icon"><use href="#icon-${iconId}"></use></svg></div><h3>${name}</h3><div class="note-count">${noteCount} nota${noteCount !== 1 ? 's' : ''}</div></div><button class="btn btn-card-open">Abrir Cuaderno</button>`;
+                    card.addEventListener('click', () => showNotesView(name)); notebookGrid.appendChild(card);
                 });
+                notesView.classList.add('hidden'); notebooksView.classList.remove('hidden');
+            };
 
-                syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg> Sincronizando...`;
-                const noteParsingRegex = /\*\*(.*?):\*\* \((.*?)\)\. (.*)/s;
-                const formattedNotesText = notesToSync.map(note => {
-                    const match = note.match(noteParsingRegex);
-                    if (match) {
-                        const [, tag, date, content] = match;
-                        return `${date.trim()}\n${content.trim()}\n\n(${currentNotebook})\n"${tag.trim()}"`;
-                    }
-                    return note;
-                }).join('\n\n---\n\n');
-                const fullTextToInsert = `\n---\n\n${formattedNotesText}`;
+            const renderNotesList = () => {
+                notesList.innerHTML = ''; const notes = appData[currentNotebook] || [];
+                notesListTitle.textContent = `Notas de Aprendizaje (${notes.length})`;
+                if (notes.length === 0) { notesList.innerHTML = `<div id="empty-notes-message"><p>Aún no hay notas. ¡Usa el formulario para empezar!</p></div>`; return; }
+                notes.forEach((note, index) => {
+                    const noteCard = document.createElement('div'); noteCard.className = 'note-card';
+                    noteCard.innerHTML = `<div class="note-content">${note.replace(/</g, "<").replace(/>/g, ">")}</div><div class="note-item-actions"><button title="Editar" data-action="edit" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-edit"></use></svg></button><button title="Borrar" data-action="delete" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-trash"></use></svg></button></div>`;
+                    notesList.appendChild(noteCard);
+                });
+            };
 
-                const doc = await gapi.client.docs.documents.get({ documentId: DOCUMENT_ID });
-                const docLength = doc.result.body.content.slice(-1)[0].endIndex;
-                const requests = [{ insertText: { text: fullTextToInsert, location: { index: docLength - 1 } } }];
-                await gapi.client.docs.documents.batchUpdate({ documentId: DOCUMENT_ID, resource: { requests } });
+            const showNotesView = (name) => { currentNotebook = name; notebookTitle.textContent = currentNotebook; renderNotesList(); notebooksView.classList.add('hidden'); notesView.classList.remove('hidden'); };
+            const showNotebooksView = () => { currentNotebook = null; notesView.classList.add('hidden'); notebooksView.classList.remove('hidden'); renderNotebooksView(); };
+
+            const addNote = () => {
+                const content = newNoteTextarea.value.trim();
+                const tag = tagSelect.value;
+                if (!tag) { alert('Por favor, selecciona una etiqueta para la nota.'); return; }
+                if (!content) { alert('Por favor, escribe el contenido de la nota.'); return; }
+                const now = new Date(), day = String(now.getDate()).padStart(2, '0'), month = String(now.getMonth() + 1).padStart(2, '0'), year = now.getFullYear().toString().slice(-2);
+                const dateStr = `(${day}-${month}-${year}).`;
+                const tagStr = `**${tag}:** `;
+                const fullNote = `${tagStr}${dateStr} ${content}`;
+                appData[currentNotebook].unshift(fullNote); 
+                saveData(); 
+                renderNotesList();
+                if (appData[currentNotebook].length === 12) {
+                    alert('¡Felicidades! Has alcanzado 12 notas.\n\nLa próxima vez que descargues el PDF, se incluirá un resumen generado por IA.');
+                }
+                newNoteTextarea.value = ''; tagSelect.selectedIndex = 0;
+            };
+
+            const editNote = (index) => { const noteCard = notesList.children[index], contentDiv = noteCard.querySelector('.note-content'); contentDiv.innerHTML = `<textarea>${appData[currentNotebook][index]}</textarea>`; noteCard.querySelector('textarea').focus(); const actionsDiv = noteCard.querySelector('.note-item-actions'); actionsDiv.innerHTML = `<button title="Guardar" data-action="save" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-save"></use></svg></button>`; };
+            const saveEditedNote = (index) => { const textarea = notesList.children[index].querySelector('textarea'); appData[currentNotebook][index] = textarea.value; saveData(); renderNotesList(); };
+            const deleteNote = (index) => { if (confirm('¿Borrar esta nota?')) { appData[currentNotebook].splice(index, 1); saveData(); renderNotesList(); } };
+            
+            const syncToGoogleDocs = async () => {
+                const originalBtnText = `Sincronizar Docs`;
+                syncDocsBtn.disabled = true;
                 
-                alert(`¡Éxito! ${notesToSync.length} nota(s) han sido sincronizadas con tu Google Doc.`);
-            } catch (error) {
-                console.error('Error al sincronizar con Google Docs:', error);
-                let errorMessage = 'Error desconocido.';
-                if (error.result && error.result.error) { errorMessage = `Error de API: ${error.result.error.message}`; } 
-                else if (error.error) { errorMessage = `Error de autenticación: ${error.error}`; } 
-                else if (error.message) { errorMessage = error.message; }
-                alert(`Error al sincronizar con Google Docs.\nRevisa la consola para más detalles.\n\nError: ${errorMessage}`);
-            } finally {
-                syncDocsBtn.disabled = false;
-                syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>${originalBtnText}`;
-            }
-        };
-
-        const getAiSummary = async (notes) => {
-            try {
-                const genAI = new GoogleGenerativeAI(API_KEY);
-                const safetySettings = [
-                    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-                    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                ];
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest", safetySettings });
-                const textToSummarize = notes.map(note => note.replace(/\*\*[^*]+\*\* /, '')).join('\n---\n');
-                const prompt = `Resume los siguientes 12 aprendizajes en un párrafo conciso y claro. Extrae las ideas principales, los patrones y la conexión entre ellos para sintetizar el conocimiento adquirido:\n\n${textToSummarize}`;
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                if (!response.text) { throw new Error('La respuesta de la IA fue bloqueada o está vacía.'); }
-                return response.text();
-            } catch (error) {
-                console.error('Error al generar el resumen:', error);
-                alert(`No se pudo generar el resumen. Revisa la consola para más detalles.\n\nError: ${error.message}`);
-                return null;
-            }
-        }
-
-        const downloadPdf = async () => {
-            const originalBtnContent = downloadBtn.innerHTML;
-            downloadBtn.disabled = true;
-            try {
-                const notes = appData[currentNotebook]; 
-                if (notes.length === 0) { alert('Este cuaderno está vacío.'); return; }
-                if (!window.jspdf) { alert('Librería PDF no cargada.'); return; }
-                let aiSummary = null;
-                if (notes.length >= 12) {
-                    downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-brain"></use></svg> Generando...`;
-                    aiSummary = await getAiSummary(notes.slice(0, 12));
+                const notesToSync = appData[currentNotebook];
+                if (!notesToSync || notesToSync.length === 0) {
+                    alert('Este cuaderno está vacío. No hay nada que sincronizar.');
+                    syncDocsBtn.disabled = false;
+                    return;
                 }
-                downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-download"></use></svg> Descargando...`;
-                const { jsPDF } = window.jspdf; 
-                const doc = new jsPDF({ unit: 'mm', format: 'a4' }); 
-                const pageMargin = 25, pageWidth = doc.internal.pageSize.getWidth();
-                let currentY = 30;
-                const textMaxWidth = pageWidth - (pageMargin * 2);
+                
+                try {
+                    syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-user"></use></svg> Autorizando...`;
+                    await new Promise((resolve, reject) => {
+                        tokenClient.callback = (response) => {
+                            if (response.error) { return reject(response); }
+                            gapi.client.setToken(response);
+                            resolve(response);
+                        };
+                        if (gapi.client.getToken() === null) {
+                            tokenClient.requestAccessToken({ prompt: 'consent' });
+                        } else {
+                            tokenClient.requestAccessToken({ prompt: '' });
+                        }
+                    });
 
-                doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.text("Experiencias de Aprendizaje", pageWidth / 2, currentY, { align: 'center' }); currentY += 12;
-                doc.setFontSize(14); doc.setFont('helvetica', 'italic'); doc.setTextColor(100); doc.text("El Saber como Universo Inconmensurable", pageWidth / 2, currentY, { align: 'center' }); currentY += 12;
-                doc.setFontSize(16); doc.setFont('helvetica', 'normal'); doc.setTextColor(0); 
-                doc.text(currentNotebook, pageWidth / 2, currentY, { align: 'center' }); 
-                currentY += 15;
-                if (aiSummary) {
-                    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
-                    doc.text("Resumen de Aprendizajes (IA)", pageMargin, currentY); currentY += 7;
-                    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-                    const summaryLines = doc.splitTextToSize(aiSummary, textMaxWidth);
-                    doc.text(aiSummary, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
-                    currentY += (summaryLines.length * 5) + 10;
-                    doc.setDrawColor(200); doc.line(pageMargin, currentY - 5, pageWidth - pageMargin, currentY - 5);
+                    syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg> Sincronizando...`;
+                    const noteParsingRegex = /\*\*(.*?):\*\* \((.*?)\)\. (.*)/s;
+                    const formattedNotesText = notesToSync.map(note => {
+                        const match = note.match(noteParsingRegex);
+                        if (match) {
+                            const [, tag, date, content] = match;
+                            return `${date.trim()}\n${content.trim()}\n\n(${currentNotebook})\n"${tag.trim()}"`;
+                        }
+                        return note;
+                    }).join('\n\n---\n\n');
+                    const fullTextToInsert = `\n\n---\n\n${formattedNotesText}\n`;
+
+                    const doc = await gapi.client.docs.documents.get({ documentId: DOCUMENT_ID });
+                    const docLength = doc.result.body.content.slice(-1)[0].endIndex;
+                    const requests = [{ insertText: { text: fullTextToInsert, location: { index: docLength - 1 } } }];
+                    await gapi.client.docs.documents.batchUpdate({ documentId: DOCUMENT_ID, resource: { requests } });
+                    
+                    alert(`¡Éxito! ${notesToSync.length} nota(s) han sido sincronizadas con tu Google Doc.`);
+                } catch (error) {
+                    console.error('Error al sincronizar con Google Docs:', error);
+                    let errorMessage = 'Error desconocido.';
+                    if (error.result && error.result.error) { errorMessage = `Error de API: ${error.result.error.message}`; } 
+                    else if (error.error) { errorMessage = `Error de autenticación: ${error.error}`; } 
+                    else if (error.message) { errorMessage = error.message; }
+                    alert(`Error al sincronizar con Google Docs.\nRevisa la consola para más detalles.\n\nError: ${errorMessage}`);
+                } finally {
+                    syncDocsBtn.disabled = false;
+                    syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>${originalBtnText}`;
                 }
-                notes.forEach(note => {
-                    const cleanNote = note.replace(/\*\*/g, ''); 
-                    const textLines = doc.splitTextToSize(cleanNote, textMaxWidth);
-                    const lineHeight = 5; 
-                    const blockHeight = textLines.length * lineHeight;
-                    if (currentY + blockHeight > doc.internal.pageSize.getHeight() - pageMargin) { doc.addPage(); currentY = pageMargin; }
-                    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-                    doc.text(cleanNote, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
-                    currentY += blockHeight + 5; 
-                });
-                doc.save(`Experiencias_${currentNotebook.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
-            } finally {
-                downloadBtn.disabled = false;
-                downloadBtn.innerHTML = originalBtnContent;
-            }
-        };
-        
-        const resetNotebook = () => { if (confirm(`¿BORRAR TODAS LAS NOTAS de "${currentNotebook}"?`)) { appData[currentNotebook] = []; saveData(); renderNotesList(); } };
-        
-        backBtn.addEventListener('click', showNotebooksView);
-        addNoteForm.addEventListener('submit', (e) => { e.preventDefault(); addNote(); });
-        downloadBtn.addEventListener('click', downloadPdf);
-        syncDocsBtn.addEventListener('click', syncToGoogleDocs);
-        resetBtn.addEventListener('click', resetNotebook);
-        notesList.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; const action = button.dataset.action, index = parseInt(button.dataset.index); if (action === 'edit') editNote(index); else if (action === 'delete') deleteNote(index); else if (action === 'save') saveEditedNote(index); });
-        
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) { const recognition = new SpeechRecognition(); recognition.lang = 'es-ES'; recognition.onstart = () => recordBtn.classList.add('is-recording'); recognition.onend = () => recordBtn.classList.remove('is-recording'); recognition.onresult = (e) => { newNoteTextarea.value += ' ' + e.results[e.results.length - 1][0].transcript.trim(); }; recordBtn.addEventListener('click', () => recognition.start());
-        } else { recordBtn.disabled = true; }
+            };
 
-        loadData(); 
-        populateTagSelector(); 
-        renderNotebooksView();
+            const getAiSummary = async (notes) => {
+                try {
+                    const genAI = new GoogleGenerativeAI(API_KEY);
+                    const safetySettings = [
+                        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                    ];
+                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest", safetySettings });
+                    const textToSummarize = notes.map(note => note.replace(/\*\*[^*]+\*\* /, '')).join('\n---\n');
+                    const prompt = `Resume los siguientes 12 aprendizajes en un párrafo conciso y claro. Extrae las ideas principales, los patrones y la conexión entre ellos para sintetizar el conocimiento adquirido:\n\n${textToSummarize}`;
+                    const result = await model.generateContent(prompt);
+                    const response = await result.response;
+                    if (!response.text) { throw new Error('La respuesta de la IA fue bloqueada o está vacía.'); }
+                    return response.text();
+                } catch (error) {
+                    console.error('Error al generar el resumen:', error);
+                    alert(`No se pudo generar el resumen. Revisa la consola para más detalles.\n\nError: ${error.message}`);
+                    return null;
+                }
+            }
+
+            const downloadPdf = async () => {
+                const originalBtnContent = downloadBtn.innerHTML;
+                downloadBtn.disabled = true;
+                try {
+                    const notes = appData[currentNotebook]; 
+                    if (notes.length === 0) { alert('Este cuaderno está vacío.'); return; }
+                    if (!window.jspdf) { alert('Librería PDF no cargada.'); return; }
+                    let aiSummary = null;
+                    if (notes.length >= 12) {
+                        downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-brain"></use></svg> Generando...`;
+                        aiSummary = await getAiSummary(notes.slice(0, 12));
+                    }
+                    downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-download"></use></svg> Descargando...`;
+                    const { jsPDF } = window.jspdf; 
+                    const doc = new jsPDF({ unit: 'mm', format: 'a4' }); 
+                    const pageMargin = 25, pageWidth = doc.internal.pageSize.getWidth();
+                    let currentY = 30;
+                    const textMaxWidth = pageWidth - (pageMargin * 2);
+
+                    doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.text("Experiencias de Aprendizaje", pageWidth / 2, currentY, { align: 'center' }); currentY += 12;
+                    doc.setFontSize(14); doc.setFont('helvetica', 'italic'); doc.setTextColor(100); doc.text("El Saber como Universo Inconmensurable", pageWidth / 2, currentY, { align: 'center' }); currentY += 12;
+                    doc.setFontSize(16); doc.setFont('helvetica', 'normal'); doc.setTextColor(0); 
+                    doc.text(currentNotebook, pageWidth / 2, currentY, { align: 'center' }); 
+                    currentY += 15;
+                    if (aiSummary) {
+                        doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+                        doc.text("Resumen de Aprendizajes (IA)", pageMargin, currentY); currentY += 7;
+                        doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+                        const summaryLines = doc.splitTextToSize(aiSummary, textMaxWidth);
+                        doc.text(aiSummary, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
+                        currentY += (summaryLines.length * 5) + 10;
+                        doc.setDrawColor(200); doc.line(pageMargin, currentY - 5, pageWidth - pageMargin, currentY - 5);
+                    }
+                    notes.forEach(note => {
+                        const cleanNote = note.replace(/\*\*/g, ''); 
+                        const textLines = doc.splitTextToSize(cleanNote, textMaxWidth);
+                        const lineHeight = 5; 
+                        const blockHeight = textLines.length * lineHeight;
+                        if (currentY + blockHeight > doc.internal.pageSize.getHeight() - pageMargin) { doc.addPage(); currentY = pageMargin; }
+                        doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+                        doc.text(cleanNote, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
+                        currentY += blockHeight + 5; 
+                    });
+                    doc.save(`Experiencias_${currentNotebook.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+                } finally {
+                    downloadBtn.disabled = false;
+                    downloadBtn.innerHTML = originalBtnContent;
+                }
+            };
+            
+            const resetNotebook = () => { if (confirm(`¿BORRAR TODAS LAS NOTAS de "${currentNotebook}"?`)) { appData[currentNotebook] = []; saveData(); renderNotesList(); } };
+            
+            // === EVENT LISTENERS ===
+            backBtn.addEventListener('click', showNotebooksView);
+            addNoteForm.addEventListener('submit', (e) => { e.preventDefault(); addNote(); });
+            downloadBtn.addEventListener('click', downloadPdf);
+            syncDocsBtn.addEventListener('click', syncToGoogleDocs);
+            resetBtn.addEventListener('click', resetNotebook);
+            notesList.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; const action = button.dataset.action, index = parseInt(button.dataset.index); if (action === 'edit') editNote(index); else if (action === 'delete') deleteNote(index); else if (action === 'save') saveEditedNote(index); });
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) { const recognition = new SpeechRecognition(); recognition.lang = 'es-ES'; recognition.onstart = () => recordBtn.classList.add('is-recording'); recognition.onend = () => recordBtn.classList.remove('is-recording'); recognition.onresult = (e) => { newNoteTextarea.value += ' ' + e.results[e.results.length - 1][0].transcript.trim(); }; recordBtn.addEventListener('click', () => recognition.start());
+            } else { recordBtn.disabled = true; }
+
+            // === INICIO DE LA APP ===
+            loadData(); 
+            populateTagSelector(); 
+            renderNotebooksView();
+        });
     </script>
 </body>
 </html>
