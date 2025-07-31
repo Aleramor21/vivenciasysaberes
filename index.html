@@ -226,6 +226,36 @@
         checkAndEnableGoogleApiFeatures();
     }
     
+    /**
+     * Parsea una nota para extraer sus componentes y limpiar el contenido.
+     * @param {string} note - El texto completo de la nota.
+     * @returns {{date: string, tag: string, content: string}}
+     */
+    function parseNoteForSheet(note) {
+        let tag = 'Sin Etiqueta';
+        let date = '';
+        let content = note.trim();
+
+        // Intenta extraer la fecha y la etiqueta.
+        const dataRegex = /\*\*(.*?):\*\* \((.*?)\)/;
+        const dataMatch = note.match(dataRegex);
+        if (dataMatch) {
+            tag = dataMatch[1] ? dataMatch[1].trim() : 'Sin Etiqueta';
+            date = dataMatch[2] ? dataMatch[2].trim() : '';
+        }
+
+        // [SOLUCIÓN DEFINITIVA] Limpia el contenido eliminando el encabezado.
+        // Esta expresión regular elimina todo desde "**" hasta el final del paréntesis de la fecha,
+        // incluyendo un punto opcional y cualquier espacio posterior.
+        const headerRemovalRegex = /^\*\*.*?\)\.?\s*/;
+        if (headerRemovalRegex.test(content)) {
+            content = content.replace(headerRemovalRegex, '').trim();
+        }
+
+        return { date, tag, content };
+    }
+
+
     async function exportNotesToGoogleSheets(currentNotebook, notes) {
         const exportBtn = document.getElementById('export-gsheet-btn');
         const originalBtnHTML = exportBtn.innerHTML;
@@ -234,21 +264,9 @@
 
         try {
             const rowsToAppend = notes.map(note => {
-                // [SOLUCIÓN ROBUSTA] Esta expresión regular es más flexible.
-                // Busca la etiqueta, luego busca la fecha entre paréntesis (opcionalmente seguida por un punto)
-                // y finalmente captura el resto como contenido.
-                // El `\.?` hace que el punto después de la fecha sea opcional, solucionando el problema con notas antiguas.
-                const match = note.match(/\*\*(.*?):\*\* \((.*?)\)\.?\s*(.*)/s);
-                
-                if (match) {
-                    const tag = match[1].trim();
-                    const date = match[2].trim();
-                    const content = match[3].trim();
-                    return [date, currentNotebook, tag, content];
-                } else {
-                    // Si una nota no coincide en absoluto (muy improbable), se maneja de forma segura.
-                    return ['', currentNotebook, 'Sin Etiqueta', note.trim()];
-                }
+                const parsed = parseNoteForSheet(note);
+                // El orden debe coincidir con las columnas: Fecha, Libro, Etiqueta, Contenido
+                return [parsed.date, currentNotebook, parsed.tag, parsed.content];
             });
 
             if (rowsToAppend.length === 0) {
