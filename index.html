@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -254,7 +253,8 @@
 
             await gapi.client.sheets.spreadsheets.values.append({
                 spreadsheetId: SPREADSHEET_ID,
-                range: SHEET_NAME, // [CORRECCIÓN CLAVE] Para la operación 'append', solo se necesita el nombre de la hoja.
+                // [CORRECCIÓN FINAL] Usar notación A1 para ser explícito, lo que funciona incluso en hojas vacías.
+                range: `${SHEET_NAME}!A1`, 
                 valueInputOption: 'USER_ENTERED',
                 insertDataOption: 'INSERT_ROWS',
                 resource: {
