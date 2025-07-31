@@ -189,6 +189,7 @@
     const CLIENT_ID = '773016062043-aihqt4olbdkoogo5a86srjll3dj0bmvk.apps.googleusercontent.com';
     const SPREADSHEET_ID = '1Q9DkYwuhrqB0h3zdxjjnkIPIgV3mVVeMlL5RvoBlpPs';
     const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+    // [CORRECCIÓN CLAVE] Asegurarse de que este nombre coincida EXACTAMENTE con la pestaña en Google Sheets.
     const SHEET_NAME = 'experienciasysaberes';
 
     let tokenClient;
@@ -253,7 +254,7 @@
 
             await gapi.client.sheets.spreadsheets.values.append({
                 spreadsheetId: SPREADSHEET_ID,
-                // [CORRECCIÓN FINAL] La sintaxis correcta para 'append' es simplemente el nombre de la hoja.
+                // [SOLUCIÓN DEFINITIVA] La sintaxis correcta para 'append' es simplemente el nombre de la hoja.
                 // La API se encarga de encontrar la última fila y añadir los datos a continuación.
                 range: SHEET_NAME, 
                 valueInputOption: 'USER_ENTERED',
