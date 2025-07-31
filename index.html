@@ -140,7 +140,7 @@
 </head>
 <body>
     <svg width="0" height="0" class="hidden">
-        <!-- Tus iconos SVG existentes -->
+        <!-- Iconos SVG (sin cambios) -->
         <symbol id="icon-target" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#F87171"/><circle cx="32" cy="32" r="20" fill="#FAFAFA"/><circle cx="32" cy="32" r="12" fill="#F87171"/><circle cx="32" cy="32" r="5" fill="#38BDF8"/><path d="M42 16 L34 28 L36 30 L44 22 Z" fill="#38BDF8"/><path d="M44 22 L42 24 L36 30 L38 32 L46 24 Z" fill="#0EA5E9"/><path d="M42 16 L46 20 L44 22 L42 16 Z" fill="#7DD3FC"/></symbol>
         <symbol id="icon-robot" viewBox="0 0 64 64"><rect x="12" y="18" width="40" height="30" rx="8" fill="#4B5563"/><rect x="16" y="22" width="32" height="22" rx="4" fill="#1F2937"/><rect x="22" y="8" width="20" height="10" rx="5" fill="#4B5563"/><circle cx="32" cy="8" r="4" fill="#60A5FA"/><circle cx="24" cy="33" r="4" fill="#34D399"/><circle cx="40" cy="33" r="4" fill="#34D399"/></symbol>
         <symbol id="icon-plant" viewBox="0 0 64 64"><path d="M32,56 C 40,56 44,48 44,40 C 44,32 40,24 32,24 C 24,24 20,32 20,40 C 20,48 24,56 32,56 Z" fill="#34D399"/><path d="M32,24 V 8" stroke="#34D399" stroke-width="6" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 1 20,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 0 44,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/></symbol>
@@ -246,12 +246,14 @@
 
             if (rowsToAppend.length === 0) {
                 alert('No se encontraron notas con el formato correcto para exportar.');
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = originalBtnHTML;
                 return;
             }
 
             await gapi.client.sheets.spreadsheets.values.append({
                 spreadsheetId: SPREADSHEET_ID,
-                range: SHEET_NAME, // [CORRECCIÓN FINAL] Solo se necesita el nombre de la hoja para 'append'.
+                range: SHEET_NAME, // [CORRECCIÓN CLAVE] Para la operación 'append', solo se necesita el nombre de la hoja.
                 valueInputOption: 'USER_ENTERED',
                 insertDataOption: 'INSERT_ROWS',
                 resource: {
@@ -259,7 +261,7 @@
                 }
             });
 
-            alert(`¡Éxito! Se han exportado ${rowsToAppend.length} notas al Google Sheet.`);
+            alert(`¡Éxito! Se han añadido ${rowsToAppend.length} notas al Google Sheet.`);
 
         } catch (err) {
             console.error('Error al exportar a Google Sheets:', err);
@@ -274,7 +276,6 @@
 
 
     document.addEventListener('DOMContentLoaded', () => {
-        // ... (resto del código de la aplicación, sin cambios) ...
         const NOTEBOOKS = {"IA & Tech": "robot", "Teoría Decisoria": "target", "Desarrollo Personal": "plant", "Felicidad": "happy", "Filosofía": "philosophy", "Neurociencia e Inteligencia": "brain", "Aprendizaje Continuo": "book", "Otros": "dots"};
         const NOTEBOOK_EMOJIS = {"IA & Tech": "🤖", "Teoría Decisoria": "🎯", "Desarrollo Personal": "🌱", "Felicidad": "😊", "Filosofía": "🏛️", "Neurociencia e Inteligencia": "🧠", "Aprendizaje Continuo": "📚", "Otros": "🔮"};
         const NOTE_TAGS = ["Descubrir", "Recordar", "Epifania", "Comprender", "Reflexionar", "Evaluar", "Errar", "Aplicar", "Crear", "Intuir"];
@@ -341,11 +342,120 @@
         const saveEditedNote = (index) => { const textarea = notesList.children[index].querySelector('textarea'); appData[currentNotebook][index] = textarea.value; saveData(); renderNotesList(); };
         const deleteNote = (index) => { if (confirm('¿Borrar esta nota?')) { appData[currentNotebook].splice(index, 1); saveData(); renderNotesList(); } };
         
-        const downloadPdf = async () => { /* ... código pdf sin cambios ... */ };
-        async function getAiSummary(notes) { /* ... código AI sin cambios ... */ }
+        // --- [FUNCIÓN RESTAURADA] Descarga de PDF ---
+        const downloadPdf = async () => {
+            const originalBtnContent = downloadBtn.innerHTML;
+            downloadBtn.disabled = true;
+
+            try {
+                const notes = appData[currentNotebook]; 
+                if (notes.length === 0) { alert('Este cuaderno está vacío.'); return; }
+                if (!window.jspdf) { alert('Librería PDF no cargada.'); return; }
+
+                let aiSummary = null;
+                if (notes.length >= 12) {
+                    downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-brain"></use></svg> Generando...`;
+                    aiSummary = await getAiSummary(notes.slice(0, 12));
+                }
+                
+                downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-download"></use></svg> Descargando...`;
+
+                const { jsPDF } = window.jspdf; 
+                const doc = new jsPDF({ unit: 'mm', format: 'a4' }); 
+                const pageMargin = 25; 
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const centerX = pageWidth / 2;
+                let currentY = 30;
+                const textMaxWidth = pageWidth - (pageMargin * 2);
+
+                doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.text("Experiencias de Aprendizaje", centerX, currentY, { align: 'center' }); currentY += 12;
+                doc.setFontSize(14); doc.setFont('helvetica', 'italic'); doc.setTextColor(100); doc.text("El Saber como Universo Inconmensurable", centerX, currentY, { align: 'center' }); currentY += 12;
+                doc.setFontSize(16); doc.setFont('helvetica', 'normal'); doc.setTextColor(0); 
+                doc.text(currentNotebook, centerX, currentY, { align: 'center' }); 
+                currentY += 15;
+
+                if (aiSummary) {
+                    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+                    doc.text("Resumen de Aprendizajes (IA)", pageMargin, currentY);
+                    currentY += 7;
+
+                    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+                    doc.text(aiSummary, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
+                    const summaryLines = doc.splitTextToSize(aiSummary, textMaxWidth);
+                    currentY += (summaryLines.length * 5) + 10;
+                    
+                    doc.setDrawColor(200);
+                    doc.line(pageMargin, currentY - 5, pageWidth - pageMargin, currentY - 5);
+                }
+                
+                notes.forEach(note => {
+                    const cleanNote = note.replace(/\*\*/g, ''); 
+                    const textLines = doc.splitTextToSize(cleanNote, textMaxWidth);
+                    const lineHeight = 5; 
+                    const blockHeight = textLines.length * lineHeight;
+                    if (currentY + blockHeight > pageHeight - pageMargin) { doc.addPage(); currentY = pageMargin; }
+                    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+                    doc.text(cleanNote, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
+                    currentY += blockHeight + 5; 
+                });
+                doc.save(`Experiencias_${currentNotebook.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+            
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = originalBtnContent;
+            }
+        };
+
+        // --- [FUNCIÓN RESTAURADA] Resumen con IA ---
+        async function getAiSummary(notes) {
+            const API_KEY = 'AIzaSyDMiA7QVEubhAwBfToV4EP6TE5_xiy3Ohc';
+            
+            if (!window.GoogleGenerativeAI) {
+                alert('El SDK de Google AI no se ha cargado.');
+                return null;
+            }
+
+            try {
+                const genAI = new window.GoogleGenerativeAI(API_KEY);
+                
+                const safetySettings = [
+                    { category: window.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                    { category: window.HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                    { category: window.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                    { category: window.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                ];
+
+                const model = genAI.getGenerativeModel({ 
+                    model: "gemini-1.5-flash-latest", 
+                    safetySettings 
+                });
+
+                const textToSummarize = notes.map(note => note.replace(/\*\*[^*]+\*\* /, '')).join('\n---\n');
+                const prompt = `Resume los siguientes 12 aprendizajes en un párrafo conciso y claro. Extrae las ideas principales, los patrones y la conexión entre ellos para sintetizar el conocimiento adquirido:\n\n${textToSummarize}`;
+
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                
+                if (!response.text) {
+                    throw new Error('La respuesta de la IA fue bloqueada o está vacía. Revisa los detalles en la consola.');
+                }
+                
+                return response.text();
+
+            } catch (error) {
+                console.error('Error al generar el resumen:', error);
+                const errorMessage = error.message || "Error desconocido.";
+                alert(`No se pudo generar el resumen. Revisa la consola para más detalles.\n\nError: ${errorMessage}`);
+                return null;
+            }
+        }
         
         const resetNotebook = () => { if (confirm(`¿BORRAR TODAS LAS NOTAS de "${currentNotebook}"?`)) { appData[currentNotebook] = []; saveData(); renderNotesList(); } };
-        backBtn.addEventListener('click', showNotebooksView); addNoteForm.addEventListener('submit', (e) => { e.preventDefault(); addNote(); });
+        
+        // --- Asignación de eventos a los botones ---
+        backBtn.addEventListener('click', showNotebooksView);
+        addNoteForm.addEventListener('submit', (e) => { e.preventDefault(); addNote(); });
         downloadBtn.addEventListener('click', downloadPdf);
         resetBtn.addEventListener('click', resetNotebook);
         
