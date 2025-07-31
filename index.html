@@ -253,8 +253,9 @@
 
             await gapi.client.sheets.spreadsheets.values.append({
                 spreadsheetId: SPREADSHEET_ID,
-                // [CORRECCIÓN FINAL] Usar notación A1 para ser explícito, lo que funciona incluso en hojas vacías.
-                range: `${SHEET_NAME}!A1`, 
+                // [CORRECCIÓN FINAL] Se usan comillas simples alrededor del nombre de la hoja para
+                // crear una referencia A1 válida y robusta que la API pueda interpretar correctamente.
+                range: `'${SHEET_NAME}'!A1`, 
                 valueInputOption: 'USER_ENTERED',
                 insertDataOption: 'INSERT_ROWS',
                 resource: {
@@ -343,7 +344,6 @@
         const saveEditedNote = (index) => { const textarea = notesList.children[index].querySelector('textarea'); appData[currentNotebook][index] = textarea.value; saveData(); renderNotesList(); };
         const deleteNote = (index) => { if (confirm('¿Borrar esta nota?')) { appData[currentNotebook].splice(index, 1); saveData(); renderNotesList(); } };
         
-        // --- [FUNCIÓN RESTAURADA] Descarga de PDF ---
         const downloadPdf = async () => {
             const originalBtnContent = downloadBtn.innerHTML;
             downloadBtn.disabled = true;
@@ -408,7 +408,6 @@
             }
         };
 
-        // --- [FUNCIÓN RESTAURADA] Resumen con IA ---
         async function getAiSummary(notes) {
             const API_KEY = 'AIzaSyDMiA7QVEubhAwBfToV4EP6TE5_xiy3Ohc';
             
@@ -469,6 +468,7 @@
             
             tokenClient.callback = async (resp) => {
                 if (resp.error !== undefined) {
+                    alert('Error de autenticación: ' + resp.error);
                     throw (resp);
                 }
                 await exportNotesToGoogleSheets(currentNotebook, notes);
