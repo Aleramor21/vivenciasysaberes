@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -10,12 +11,29 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script type="module">
+        import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "https://esm.run/@google/generative-ai";
+        window.GoogleGenerativeAI = GoogleGenerativeAI;
+        window.HarmCategory = HarmCategory;
+        window.HarmBlockThreshold = HarmBlockThreshold;
+    </script>
 
     <style>
         :root {
-            --bg-dark: #111827; --card-bg: #4f46e5; --surface-dark: #1F2937; --surface-light: #374151; --border-color: #4B5563;
-            --text-primary: #F9FAFB; --text-secondary: #9CA3AF; --accent-primary: #8B5CF6; --accent-hover: #7C3AED;
-            --accent-google: #3B82F6; --accent-google-hover: #2563EB; --font-family: 'Poppins', sans-serif; --border-radius: 0.75rem;
+            --bg-dark: #111827; 
+            --card-bg: #4f46e5; 
+            --surface-dark: #1F2937;
+            --surface-light: #374151;
+            --border-color: #4B5563;
+            --text-primary: #F9FAFB;
+            --text-secondary: #9CA3AF;
+            --accent-primary: #8B5CF6;
+            --accent-hover: #7C3AED;
+            --font-family: 'Poppins', sans-serif;
+            --border-radius: 0.75rem;
+            --gsheet-color: #109c58;
+            --gsheet-hover: #0a7d46;
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: var(--font-family); background-color: var(--bg-dark); color: var(--text-primary); line-height: 1.6; }
@@ -25,12 +43,22 @@
         .main-header h1 { font-size: 2.5rem; font-weight: 700; color: var(--text-primary); }
         .main-header p { font-size: 1.125rem; color: var(--text-secondary); margin-top: 0.5rem; }
         .notebook-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-        .notebook-card { background-color: var(--card-bg); border-radius: var(--border-radius); padding: 1.5rem; text-align: center; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--border-color); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .notebook-card {
+            background-color: var(--card-bg); border-radius: var(--border-radius); padding: 1.5rem;
+            text-align: center; display: flex; flex-direction: column; justify-content: space-between;
+            border: 1px solid var(--border-color); transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
         .notebook-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3); }
         .notebook-card .icon-container .icon { width: 64px; height: 64px; margin-bottom: 1rem; }
         .notebook-card h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary); }
         .notebook-card .note-count { color: #C7D2FE; font-size: 0.875rem; margin-bottom: 1.5rem; }
-        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border: none; border-radius: var(--border-radius); font-size: 1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s, transform 0.1s; text-decoration: none; width: 100%; white-space: nowrap; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            padding: 0.75rem 1.5rem; border: none; border-radius: var(--border-radius);
+            font-size: 1rem; font-weight: 500; cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s; text-decoration: none; width: 100%;
+            white-space: nowrap;
+        }
         .btn:disabled { cursor: not-allowed; opacity: 0.7; }
         .btn:active { transform: scale(0.98); }
         .btn .icon { width: 20px; height: 20px; }
@@ -43,33 +71,79 @@
         .notes-header .btn-back { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1rem; display: flex; align-items: center; padding: 0; gap: 0.4rem; }
         .notes-header .btn-back:hover { color: var(--text-primary); }
         .note-actions-header { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end; }
-        .note-actions-header .btn { width: auto; padding: 0.6rem 1.1rem; }
-        #download-notes-btn { background-color: var(--surface-light); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .note-actions-header .btn { 
+            width: auto;
+            padding: 0.6rem 1.1rem;
+        }
+        
+        #download-notes-btn {
+            background-color: var(--surface-light);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
         #download-notes-btn:hover { background-color: var(--border-color); }
-        #sync-docs-btn { background-color: var(--accent-google); border: 1px solid var(--accent-google); color: var(--text-primary); }
-        #sync-docs-btn:hover { background-color: var(--accent-google-hover); }
+        
+        /* --- ESTILO NUEVO BOTÓN GOOGLE SHEETS --- */
+        #export-gsheet-btn {
+            background-color: var(--gsheet-color);
+            border: 1px solid var(--gsheet-color);
+            color: var(--text-primary);
+        }
+        #export-gsheet-btn:hover { background-color: var(--gsheet-hover); }
+        /* --- FIN ESTILO NUEVO BOTÓN --- */
+
         .note-actions-header .btn-danger-outline { background-color: transparent; color: #FCA5A5; border: 1px solid #FCA5A5; }
         .note-actions-header .btn-danger-outline:hover { background-color: #EF4444; color: var(--text-primary); }
         #add-note-form { background-color: var(--surface-dark); border-radius: var(--border-radius); padding: 1.5rem; margin-bottom: 2.5rem; border: 1px solid var(--border-color); }
+        .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; }
         #note-tag-select { width: 100%; background-color: var(--surface-light); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 0.75rem; font-family: var(--font-family); font-size: 1rem; color: var(--text-primary); }
+        #note-tag-select:focus { outline: none; border-color: var(--accent-primary); }
         .input-wrapper { position: relative; width: 100%; }
         #new-note-textarea { width: 100%; min-height: 120px; background-color: var(--surface-light); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; font-family: var(--font-family); font-size: 1rem; color: var(--text-primary); resize: vertical; }
+        #new-note-textarea:focus { outline: none; border-color: var(--accent-primary); }
         #record-note-btn { position: absolute; right: 1rem; top: 1rem; background-color: transparent; border: 2px solid var(--text-secondary); color: var(--text-secondary); width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+        #record-note-btn:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
         #record-note-btn.is-recording { color: #EF4444; border-color: #EF4444; animation: pulse-record 1.5s infinite; }
         @keyframes pulse-record { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         #add-note-btn { background-color: var(--accent-primary); color: var(--text-primary); }
-        .note-card { background-color: var(--surface-dark); border-radius: var(--border-radius); padding: 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.75rem; }
-        .note-content { white-space: pre-wrap; word-wrap: break-word; text-align: justify; hyphens: auto; }
+        #add-note-btn:hover { background-color: var(--accent-hover); }
+        #notes-list-container h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; border-bottom: 1px solid var(--surface-light); padding-bottom: 0.75rem; }
+        
+        .note-card {
+            background-color: var(--surface-dark);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column; 
+            gap: 0.75rem; 
+        }
+        
+        .note-content {
+            white-space: pre-wrap; 
+            word-wrap: break-word;
+            text-align: justify;
+            hyphens: auto; 
+        }
+
         .note-content textarea { width: 100%; min-height: 100px; background-color: var(--surface-light); border: 1px solid var(--accent-primary); border-radius: var(--border-radius); padding: 1rem; font-family: var(--font-family); color: var(--text-primary); resize: vertical; }
-        .note-item-actions { display: flex; gap: 0.5rem; align-self: flex-end; }
+        
+        .note-item-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-self: flex-end; 
+        }
+
         .note-item-actions button { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.5rem; border-radius: 50%; }
         .note-item-actions button:hover { background-color: var(--surface-light); color: var(--text-primary); }
+        #empty-notes-message { text-align: center; color: var(--text-secondary); padding: 3rem; border: 2px dashed var(--border-color); border-radius: var(--border-radius); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
     <svg width="0" height="0" class="hidden">
-        <symbol id="icon-user" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" /></symbol>
+        <!-- Iconos existentes... -->
         <symbol id="icon-target" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#F87171"/><circle cx="32" cy="32" r="20" fill="#FAFAFA"/><circle cx="32" cy="32" r="12" fill="#F87171"/><circle cx="32" cy="32" r="5" fill="#38BDF8"/><path d="M42 16 L34 28 L36 30 L44 22 Z" fill="#38BDF8"/><path d="M44 22 L42 24 L36 30 L38 32 L46 24 Z" fill="#0EA5E9"/><path d="M42 16 L46 20 L44 22 L42 16 Z" fill="#7DD3FC"/></symbol>
         <symbol id="icon-robot" viewBox="0 0 64 64"><rect x="12" y="18" width="40" height="30" rx="8" fill="#4B5563"/><rect x="16" y="22" width="32" height="22" rx="4" fill="#1F2937"/><rect x="22" y="8" width="20" height="10" rx="5" fill="#4B5563"/><circle cx="32" cy="8" r="4" fill="#60A5FA"/><circle cx="24" cy="33" r="4" fill="#34D399"/><circle cx="40" cy="33" r="4" fill="#34D399"/></symbol>
         <symbol id="icon-plant" viewBox="0 0 64 64"><path d="M32,56 C 40,56 44,48 44,40 C 44,32 40,24 32,24 C 24,24 20,32 20,40 C 20,48 24,56 32,56 Z" fill="#34D399"/><path d="M32,24 V 8" stroke="#34D399" stroke-width="6" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 1 20,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 0 44,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/></symbol>
@@ -84,8 +158,10 @@
         <symbol id="icon-microphone" viewBox="0 0 24 24" fill="currentColor"><path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" /><path d="M6 12.75A.75.75 0 0 1 6.75 12h10.5a.75.75 0 0 1 0 1.5H6.75A.75.75 0 0 1 6 12.75Z" /><path d="M12 15a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V15.75A.75.75 0 0 1 12 15Z" /><path d="M12 18.75a3 3 0 0 0 2.847-2.25H9.153a3 3 0 0 0 2.847 2.25Z" /></symbol>
         <symbol id="icon-save" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3.75A1.5 1.5 0 0 1 4.5 2.25h9.844a1.5 1.5 0 0 1 1.06.44l4.156 4.156a1.5 1.5 0 0 1 .44 1.06V19.5A1.5 1.5 0 0 1 18.5 21H4.5A1.5 1.5 0 0 1 3 19.5v-15Z" /><path d="M8.25 15a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Z" /><path d="M12 3a.75.75 0 0 0-.75.75v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V3.75A.75.75 0 0 0 12 3Z" /></symbol>
         <symbol id="icon-edit" viewBox="0 0 24 24" fill="currentColor"><path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a.75.75 0 0 0-.22.53v2.532a.75.75 0 0 0 .75.75H8.199a.75.75 0 0 0 .53-.22l12.15-12.15Z" /></symbol>
-        <symbol id="icon-cloud-upload" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M10.5 1.5A5.25 5.25 0 0 0 5.25 6.75c0 2.016 1.135 3.766 2.83 4.656A4.505 4.505 0 0 0 4.5 15.75a4.5 4.5 0 0 0 8.716 1.442A5.25 5.25 0 0 0 18.75 16.5a5.25 5.25 0 0 0-5.25-5.25c-.99 0-1.91.256-2.695.706A5.232 5.232 0 0 0 10.5 1.5Zm2.25 9.75a.75.75 0 0 0-1.5 0v2.565l-.32-.32a.75.75 0 0 0-1.06 1.06l1.5 1.5a.75.75 0 0 0 1.06 0l1.5-1.5a.75.75 0 1 0-1.06-1.06l-.32.32V11.25Z" clip-rule="evenodd" /></symbol>
+        <!-- *** NUEVO ICONO PARA GOOGLE SHEETS *** -->
+        <symbol id="icon-gsheet" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 9h-3v3H8v-3H5v-2h3V6h2v3h3v2z"/></symbol>
     </svg>
+
     <div class="app-container">
         <section id="notebooks-view">
             <header class="main-header"><h1>Experiencias de Aprendizaje</h1><p>Registra, etiqueta y organiza tus descubrimientos académicos.</p></header>
@@ -95,8 +171,9 @@
             <header class="notes-header">
                 <div class="title-group"><button id="back-to-notebooks-btn" class="btn-back"><svg class="icon" width="24" height="24"><use href="#icon-arrow-left"></use></svg><span>Regresar</span></button><h2 id="notebook-title"></h2></div>
                 <div class="note-actions-header">
-                    <button id="sync-docs-btn" class="btn" disabled><svg class="icon"><use href="#icon-user"></use></svg>Cargando APIs...</button>
                     <button id="download-notes-btn" class="btn"><svg class="icon"><use href="#icon-download"></use></svg>Aprendizajes</button>
+                    <!-- *** NUEVO BOTÓN PARA EXPORTAR A GOOGLE SHEETS *** -->
+                    <button id="export-gsheet-btn" class="btn"><svg class="icon"><use href="#icon-gsheet"></use></svg>Exportar a Sheet</button>
                     <button id="reset-notebook-btn" class="btn btn-danger-outline"><svg class="icon"><use href="#icon-trash"></use></svg>Reiniciar</button>
                 </div>
             </header>
@@ -109,289 +186,330 @@
         </section>
     </div>
 
-    <!-- SCRIPT PRINCIPAL DE TIPO MÓDULO -->
-    <script type="module">
-        import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "https://esm.run/@google/generative-ai";
+    <!-- *** SCRIPT PARA CARGAR LA API DE GOOGLE *** -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    
+    <script>
+    // --- INICIO: NUEVA SECCIÓN DE CONFIGURACIÓN Y FUNCIONES DE GOOGLE SHEETS ---
 
-        // === CONFIGURACIÓN DE APIS ===
-        const CLIENT_ID = '773016062043-aihqt4olbdkoogo5a86srjll3dj0bmvk.apps.googleusercontent.com';
-        const API_KEY = 'AIzaSyDMiA7QVEubhAwBfToV4EP6TE5_xiy3Ohc';
-        const DOCUMENT_ID = '1ZQTvlAHZpME_XfoCx6WNu1sNJEntwaOr-a-PF1lQMvE';
-        const SCOPES = 'https://www.googleapis.com/auth/documents';
+    // Configuración de la API de Google Sheets
+    const CLIENT_ID = '773016062043-aihqt4olbdkoogo5a86srjll3dj0bmvk.apps.googleusercontent.com';
+    const SPREADSHEET_ID = '1Q9DkYwuhrqB0h3zdxjjnkIPIgV3mVVeMlL5RvoBlpPs';
+    const SHEET_NAME = 'experienciasysaberes'; // El nombre exacto de la hoja en tu Google Sheet
+    const DISCOVERY_DOCS = ["https://sheets.googleapis.com/$discovery/rest?version=v4"];
+    const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 
-        let tokenClient;
+    let gapi;
+    let authInstance;
 
-        // === INICIALIZACIÓN DE APIS CONTROLADA ===
-        const gapiPromise = new Promise((resolve, reject) => {
-            window.gapiLoaded = () => {
-                gapi.load('client', async () => {
-                    try {
-                        await gapi.client.init({
-                            apiKey: API_KEY,
-                            discoveryDocs: ['https://docs.googleapis.com/$discovery/rest?version=v1'],
-                        });
-                        resolve();
-                    } catch (err) {
-                        reject(err);
-                    }
-                });
-            };
+    /**
+     * Se llama cuando el script de la API de Google se ha cargado.
+     */
+    function gapiLoaded() {
+        window.gapi.load('client:auth2', initClient);
+    }
+
+    /**
+     * Inicializa el cliente de la API.
+     */
+    function initClient() {
+        gapi = window.gapi;
+        gapi.client.init({
+            clientId: CLIENT_ID,
+            discoveryDocs: DISCOVERY_DOCS,
+            scope: SCOPES
+        }).then(() => {
+            authInstance = gapi.auth2.getAuthInstance();
+            console.log("Cliente de Google API inicializado.");
+            // Opcional: Actualizar la UI si el usuario ya ha iniciado sesión
+            updateSigninStatus(authInstance.isSignedIn.get());
+            authInstance.isSignedIn.listen(updateSigninStatus);
+        }).catch(error => {
+            console.error("Error inicializando el cliente de Google API:", error);
+            alert("No se pudo conectar con los servicios de Google. Revisa la consola para más detalles.");
         });
+    }
 
-        const gisPromise = new Promise((resolve, reject) => {
-            window.gisLoaded = () => {
-                try {
-                    tokenClient = google.accounts.oauth2.initTokenClient({
-                        client_id: CLIENT_ID,
-                        scope: SCOPES,
-                        callback: '',
-                    });
-                    resolve();
-                } catch(err) {
-                    reject(err);
-                }
-            };
-        });
-        
-        // Carga dinámica de los scripts de Google
-        function loadScript(src) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = src;
-                script.async = true;
-                script.defer = true;
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
+    /**
+     * Actualiza la UI según el estado de inicio de sesión.
+     * @param {boolean} isSignedIn
+     */
+    function updateSigninStatus(isSignedIn) {
+        const exportBtn = document.getElementById('export-gsheet-btn');
+        if (isSignedIn) {
+            console.log("Usuario autenticado con Google.");
+            if (exportBtn) exportBtn.disabled = false;
+        } else {
+            console.log("Usuario no autenticado con Google.");
+            // El botón se habilitará de todos modos, y al hacer clic pedirá iniciar sesión.
+        }
+    }
+    
+    /**
+     * Función principal para exportar notas a Google Sheets.
+     * @param {string} currentNotebook - El nombre del cuaderno actual.
+     * @param {Array<string>} notes - El array de notas a exportar.
+     */
+    async function exportNotesToSheet(currentNotebook, notes) {
+        if (!authInstance) {
+            alert("El servicio de Google no está listo. Por favor, espera un momento y vuelve a intentarlo.");
+            return;
+        }
+
+        if (!authInstance.isSignedIn.get()) {
+            await authInstance.signIn();
         }
         
-        loadScript('https://apis.google.com/js/api.js?onload=gapiLoaded');
-        loadScript('https://accounts.google.com/gsi/client?onload=gisLoaded');
+        const exportBtn = document.getElementById('export-gsheet-btn');
+        const originalBtnHTML = exportBtn.innerHTML;
+        exportBtn.disabled = true;
+        exportBtn.innerHTML = `Exportando...`;
 
-        // El resto del código se ejecuta cuando el DOM esté listo.
-        document.addEventListener('DOMContentLoaded', () => {
-            // === CONSTANTES Y VARIABLES DE LA APP ===
-            const NOTEBOOKS = {"IA & Tech": "robot", "Teoría Decisoria": "target", "Desarrollo Personal": "plant", "Felicidad": "happy", "Filosofía": "philosophy", "Neurociencia e Inteligencia": "brain", "Aprendizaje Continuo": "book", "Otros": "dots"};
-            const NOTE_TAGS = ["Descubrir", "Recordar", "Epifania", "Comprender", "Reflexionar", "Evaluar", "Errar", "Aplicar", "Crear", "Intuir"];
-            const NOTEBOOK_NAMES = Object.keys(NOTEBOOKS);
-            let appData = {}, currentNotebook = null;
-            
-            // === SELECTORES DEL DOM ===
-            const notebooksView = document.getElementById('notebooks-view'), notesView = document.getElementById('notes-view'), notebookGrid = document.getElementById('notebook-grid'), notesList = document.getElementById('notes-list'), notesListTitle = document.getElementById('notes-list-title'), notebookTitle = document.getElementById('notebook-title'), backBtn = document.getElementById('back-to-notebooks-btn'), downloadBtn = document.getElementById('download-notes-btn'), resetBtn = document.getElementById('reset-notebook-btn'), recordBtn = document.getElementById('record-note-btn'), addNoteForm = document.getElementById('add-note-form'), newNoteTextarea = document.getElementById('new-note-textarea'), tagSelect = document.getElementById('note-tag-select'), syncDocsBtn = document.getElementById('sync-docs-btn');
-
-            // === LÓGICA DE INICIALIZACIÓN DEL BOTÓN ===
-            Promise.all([gapiPromise, gisPromise]).then(() => {
-                console.log("Google APIs (GSI y GAPI) están listas.");
-                syncDocsBtn.disabled = false;
-                syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>Sincronizar Docs`;
-            }).catch(error => {
-                console.error("Error crítico al cargar las APIs de Google:", error);
-                syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-user"></use></svg>Error de API`;
-                alert("No se pudieron cargar las APIs de Google. Por favor, revisa la consola y la configuración de la API Key en Google Cloud.");
-            });
-
-            // === FUNCIONES PRINCIPALES DE LA APP ===
-            const loadData = () => { const savedData = localStorage.getItem('learningJournalDataV6'); appData = savedData ? JSON.parse(savedData) : {}; NOTEBOOK_NAMES.forEach(name => { if (!appData[name]) appData[name] = []; }); saveData(); };
-            const saveData = () => localStorage.setItem('learningJournalDataV6', JSON.stringify(appData));
-            const populateTagSelector = () => { tagSelect.innerHTML = `<option value="">Selecciona una etiqueta...</option>`; NOTE_TAGS.forEach(tag => { tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`; }); };
-            
-            const renderNotebooksView = () => {
-                notebookGrid.innerHTML = '';
-                NOTEBOOK_NAMES.forEach(name => {
-                    const noteCount = appData[name] ? appData[name].length : 0, iconId = NOTEBOOKS[name] || "dots";
-                    const card = document.createElement('div'); card.className = 'notebook-card'; card.dataset.notebook = name;
-                    card.innerHTML = `<div><div class="icon-container"><svg class="icon"><use href="#icon-${iconId}"></use></svg></div><h3>${name}</h3><div class="note-count">${noteCount} nota${noteCount !== 1 ? 's' : ''}</div></div><button class="btn btn-card-open">Abrir Cuaderno</button>`;
-                    card.addEventListener('click', () => showNotesView(name)); notebookGrid.appendChild(card);
-                });
-                notesView.classList.add('hidden'); notebooksView.classList.remove('hidden');
-            };
-
-            const renderNotesList = () => {
-                notesList.innerHTML = ''; const notes = appData[currentNotebook] || [];
-                notesListTitle.textContent = `Notas de Aprendizaje (${notes.length})`;
-                if (notes.length === 0) { notesList.innerHTML = `<div id="empty-notes-message"><p>Aún no hay notas. ¡Usa el formulario para empezar!</p></div>`; return; }
-                notes.forEach((note, index) => {
-                    const noteCard = document.createElement('div'); noteCard.className = 'note-card';
-                    noteCard.innerHTML = `<div class="note-content">${note.replace(/</g, "<").replace(/>/g, ">")}</div><div class="note-item-actions"><button title="Editar" data-action="edit" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-edit"></use></svg></button><button title="Borrar" data-action="delete" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-trash"></use></svg></button></div>`;
-                    notesList.appendChild(noteCard);
-                });
-            };
-
-            const showNotesView = (name) => { currentNotebook = name; notebookTitle.textContent = currentNotebook; renderNotesList(); notebooksView.classList.add('hidden'); notesView.classList.remove('hidden'); };
-            const showNotebooksView = () => { currentNotebook = null; notesView.classList.add('hidden'); notebooksView.classList.remove('hidden'); renderNotebooksView(); };
-
-            const addNote = () => {
-                const content = newNoteTextarea.value.trim();
-                const tag = tagSelect.value;
-                if (!tag) { alert('Por favor, selecciona una etiqueta para la nota.'); return; }
-                if (!content) { alert('Por favor, escribe el contenido de la nota.'); return; }
-                const now = new Date(), day = String(now.getDate()).padStart(2, '0'), month = String(now.getMonth() + 1).padStart(2, '0'), year = now.getFullYear().toString().slice(-2);
-                const dateStr = `(${day}-${month}-${year}).`;
-                const tagStr = `**${tag}:** `;
-                const fullNote = `${tagStr}${dateStr} ${content}`;
-                appData[currentNotebook].unshift(fullNote); 
-                saveData(); 
-                renderNotesList();
-                if (appData[currentNotebook].length === 12) {
-                    alert('¡Felicidades! Has alcanzado 12 notas.\n\nLa próxima vez que descargues el PDF, se incluirá un resumen generado por IA.');
+        try {
+            // Analiza las notas para crear las filas que se insertarán
+            const rowsToAppend = notes.map(note => {
+                // Expresión regular para extraer: 1:Etiqueta, 2:Fecha, 3:Contenido
+                const match = note.match(/\*\*(.*?):\*\* \((.*?)\)\.\s*(.*)/s);
+                if (match) {
+                    const tag = match[1].trim();
+                    const date = match[2].trim();
+                    const content = match[3].trim();
+                    // Orden de columnas: "Fecha", "Libro", "Etiqueta", "Contenido de la nota"
+                    return [date, currentNotebook, tag, content];
                 }
-                newNoteTextarea.value = ''; tagSelect.selectedIndex = 0;
-            };
+                return null; // Ignorar notas que no coincidan con el formato
+            }).filter(row => row !== null); // Eliminar nulos
 
-            const editNote = (index) => { const noteCard = notesList.children[index], contentDiv = noteCard.querySelector('.note-content'); contentDiv.innerHTML = `<textarea>${appData[currentNotebook][index]}</textarea>`; noteCard.querySelector('textarea').focus(); const actionsDiv = noteCard.querySelector('.note-item-actions'); actionsDiv.innerHTML = `<button title="Guardar" data-action="save" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-save"></use></svg></button>`; };
-            const saveEditedNote = (index) => { const textarea = notesList.children[index].querySelector('textarea'); appData[currentNotebook][index] = textarea.value; saveData(); renderNotesList(); };
-            const deleteNote = (index) => { if (confirm('¿Borrar esta nota?')) { appData[currentNotebook].splice(index, 1); saveData(); renderNotesList(); } };
-            
-            const syncToGoogleDocs = async () => {
-                const originalBtnText = `Sincronizar Docs`;
-                syncDocsBtn.disabled = true;
-                
-                const notesToSync = appData[currentNotebook];
-                if (!notesToSync || notesToSync.length === 0) {
-                    alert('Este cuaderno está vacío. No hay nada que sincronizar.');
-                    syncDocsBtn.disabled = false;
-                    return;
-                }
-                
-                try {
-                    syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-user"></use></svg> Autorizando...`;
-                    await new Promise((resolve, reject) => {
-                        tokenClient.callback = (response) => {
-                            if (response.error) { return reject(response); }
-                            gapi.client.setToken(response);
-                            resolve(response);
-                        };
-                        if (gapi.client.getToken() === null) {
-                            tokenClient.requestAccessToken({ prompt: 'consent' });
-                        } else {
-                            tokenClient.requestAccessToken({ prompt: '' });
-                        }
-                    });
-
-                    syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg> Sincronizando...`;
-                    const noteParsingRegex = /\*\*(.*?):\*\* \((.*?)\)\. (.*)/s;
-                    const formattedNotesText = notesToSync.map(note => {
-                        const match = note.match(noteParsingRegex);
-                        if (match) {
-                            const [, tag, date, content] = match;
-                            return `${date.trim()}\n${content.trim()}\n\n(${currentNotebook})\n"${tag.trim()}"`;
-                        }
-                        return note;
-                    }).join('\n\n---\n\n');
-                    const fullTextToInsert = `\n\n---\n\n${formattedNotesText}\n`;
-
-                    const doc = await gapi.client.docs.documents.get({ documentId: DOCUMENT_ID });
-                    const docLength = doc.result.body.content.slice(-1)[0].endIndex;
-                    const requests = [{ insertText: { text: fullTextToInsert, location: { index: docLength - 1 } } }];
-                    await gapi.client.docs.documents.batchUpdate({ documentId: DOCUMENT_ID, resource: { requests } });
-                    
-                    alert(`¡Éxito! ${notesToSync.length} nota(s) han sido sincronizadas con tu Google Doc.`);
-                } catch (error) {
-                    console.error('Error al sincronizar con Google Docs:', error);
-                    let errorMessage = 'Error desconocido.';
-                    if (error.result && error.result.error) { errorMessage = `Error de API: ${error.result.error.message}`; } 
-                    else if (error.error) { errorMessage = `Error de autenticación: ${error.error}`; } 
-                    else if (error.message) { errorMessage = error.message; }
-                    alert(`Error al sincronizar con Google Docs.\nRevisa la consola para más detalles.\n\nError: ${errorMessage}`);
-                } finally {
-                    syncDocsBtn.disabled = false;
-                    syncDocsBtn.innerHTML = `<svg class="icon"><use href="#icon-cloud-upload"></use></svg>${originalBtnText}`;
-                }
-            };
-
-            const getAiSummary = async (notes) => {
-                try {
-                    const genAI = new GoogleGenerativeAI(API_KEY);
-                    const safetySettings = [
-                        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-                        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                    ];
-                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest", safetySettings });
-                    const textToSummarize = notes.map(note => note.replace(/\*\*[^*]+\*\* /, '')).join('\n---\n');
-                    const prompt = `Resume los siguientes 12 aprendizajes en un párrafo conciso y claro. Extrae las ideas principales, los patrones y la conexión entre ellos para sintetizar el conocimiento adquirido:\n\n${textToSummarize}`;
-                    const result = await model.generateContent(prompt);
-                    const response = await result.response;
-                    if (!response.text) { throw new Error('La respuesta de la IA fue bloqueada o está vacía.'); }
-                    return response.text();
-                } catch (error) {
-                    console.error('Error al generar el resumen:', error);
-                    alert(`No se pudo generar el resumen. La API Key podría no tener los permisos correctos para "Generative Language API".\n\nError: ${error.message}`);
-                    return null;
-                }
+            if (rowsToAppend.length === 0) {
+                alert('No se encontraron notas con el formato correcto para exportar.');
+                return;
             }
 
-            const downloadPdf = async () => {
-                const originalBtnContent = downloadBtn.innerHTML;
-                downloadBtn.disabled = true;
-                try {
-                    const notes = appData[currentNotebook]; 
-                    if (notes.length === 0) { alert('Este cuaderno está vacío.'); return; }
-                    if (!window.jspdf) { alert('Librería PDF no cargada.'); return; }
-                    let aiSummary = null;
-                    if (notes.length >= 12) {
-                        downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-brain"></use></svg> Generando...`;
-                        aiSummary = await getAiSummary(notes.slice(0, 12));
-                    }
-                    downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-download"></use></svg> Descargando...`;
-                    const { jsPDF } = window.jspdf; 
-                    const doc = new jsPDF({ unit: 'mm', format: 'a4' }); 
-                    const pageMargin = 25, pageWidth = doc.internal.pageSize.getWidth();
-                    let currentY = 30;
-                    const textMaxWidth = pageWidth - (pageMargin * 2);
-
-                    doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.text("Experiencias de Aprendizaje", pageWidth / 2, currentY, { align: 'center' }); currentY += 12;
-                    doc.setFontSize(14); doc.setFont('helvetica', 'italic'); doc.setTextColor(100); doc.text("El Saber como Universo Inconmensurable", pageWidth / 2, currentY, { align: 'center' }); currentY += 12;
-                    doc.setFontSize(16); doc.setFont('helvetica', 'normal'); doc.setTextColor(0); 
-                    doc.text(currentNotebook, pageWidth / 2, currentY, { align: 'center' }); 
-                    currentY += 15;
-                    if (aiSummary) {
-                        doc.setFontSize(13); doc.setFont('helvetica', 'bold');
-                        doc.text("Resumen de Aprendizajes (IA)", pageMargin, currentY); currentY += 7;
-                        doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-                        const summaryLines = doc.splitTextToSize(aiSummary, textMaxWidth);
-                        doc.text(aiSummary, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
-                        currentY += (summaryLines.length * 5) + 10;
-                        doc.setDrawColor(200); doc.line(pageMargin, currentY - 5, pageWidth - pageMargin, currentY - 5);
-                    }
-                    notes.forEach(note => {
-                        const cleanNote = note.replace(/\*\*/g, ''); 
-                        const textLines = doc.splitTextToSize(cleanNote, textMaxWidth);
-                        const lineHeight = 5; 
-                        const blockHeight = textLines.length * lineHeight;
-                        if (currentY + blockHeight > doc.internal.pageSize.getHeight() - pageMargin) { doc.addPage(); currentY = pageMargin; }
-                        doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-                        doc.text(cleanNote, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
-                        currentY += blockHeight + 5; 
-                    });
-                    doc.save(`Experiencias_${currentNotebook.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
-                } finally {
-                    downloadBtn.disabled = false;
-                    downloadBtn.innerHTML = originalBtnContent;
+            const response = await gapi.client.sheets.spreadsheets.values.append({
+                spreadsheetId: SPREADSHEET_ID,
+                range: `${SHEET_NAME}!A:D`,
+                valueInputOption: 'USER_ENTERED',
+                insertDataOption: 'INSERT_ROWS',
+                resource: {
+                    values: rowsToAppend
                 }
-            };
-            
-            const resetNotebook = () => { if (confirm(`¿BORRAR TODAS LAS NOTAS de "${currentNotebook}"?`)) { appData[currentNotebook] = []; saveData(); renderNotesList(); } };
-            
-            // === EVENT LISTENERS ===
-            backBtn.addEventListener('click', showNotebooksView);
-            addNoteForm.addEventListener('submit', (e) => { e.preventDefault(); addNote(); });
-            downloadBtn.addEventListener('click', downloadPdf);
-            syncDocsBtn.addEventListener('click', syncToGoogleDocs);
-            resetBtn.addEventListener('click', resetNotebook);
-            notesList.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; const action = button.dataset.action, index = parseInt(button.dataset.index); if (action === 'edit') editNote(index); else if (action === 'delete') deleteNote(index); else if (action === 'save') saveEditedNote(index); });
-            
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRecognition) { const recognition = new SpeechRecognition(); recognition.lang = 'es-ES'; recognition.onstart = () => recordBtn.classList.add('is-recording'); recognition.onend = () => recordBtn.classList.remove('is-recording'); recognition.onresult = (e) => { newNoteTextarea.value += ' ' + e.results[e.results.length - 1][0].transcript.trim(); }; recordBtn.addEventListener('click', () => recognition.start());
-            } else { recordBtn.disabled = true; }
+            });
 
-            // === INICIO DE LA APP ===
-            loadData(); 
-            populateTagSelector(); 
-            renderNotebooksView();
+            console.log('Respuesta de la API de Sheets:', response);
+            alert(`¡Éxito! Se han exportado ${rowsToAppend.length} notas al cuaderno "${currentNotebook}".`);
+
+        } catch (err) {
+            console.error('Error al exportar a Google Sheets:', err);
+            const errorMessage = err.result?.error?.message || 'Error desconocido. Revisa la consola.';
+            alert(`Ocurrió un error al exportar: ${errorMessage}`);
+        } finally {
+            exportBtn.disabled = false;
+            exportBtn.innerHTML = originalBtnHTML;
+        }
+    }
+
+    // --- FIN: NUEVA SECCIÓN DE GOOGLE SHEETS ---
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const NOTEBOOKS = {"IA & Tech": "robot", "Teoría Decisoria": "target", "Desarrollo Personal": "plant", "Felicidad": "happy", "Filosofía": "philosophy", "Neurociencia e Inteligencia": "brain", "Aprendizaje Continuo": "book", "Otros": "dots"};
+        const NOTEBOOK_EMOJIS = {"IA & Tech": "🤖", "Teoría Decisoria": "🎯", "Desarrollo Personal": "🌱", "Felicidad": "😊", "Filosofía": "🏛️", "Neurociencia e Inteligencia": "🧠", "Aprendizaje Continuo": "📚", "Otros": "🔮"};
+        const NOTE_TAGS = ["Descubrir", "Recordar", "Epifania", "Comprender", "Reflexionar", "Evaluar", "Errar", "Aplicar", "Crear", "Intuir"];
+        const NOTEBOOK_NAMES = Object.keys(NOTEBOOKS);
+        let appData = {}, currentNotebook = null;
+        
+        const notebooksView = document.getElementById('notebooks-view'), notesView = document.getElementById('notes-view'), notebookGrid = document.getElementById('notebook-grid'), notesList = document.getElementById('notes-list'), notesListTitle = document.getElementById('notes-list-title'), notebookTitle = document.getElementById('notebook-title'), backBtn = document.getElementById('back-to-notebooks-btn'), downloadBtn = document.getElementById('download-notes-btn'), resetBtn = document.getElementById('reset-notebook-btn'), recordBtn = document.getElementById('record-note-btn'), addNoteForm = document.getElementById('add-note-form'), newNoteTextarea = document.getElementById('new-note-textarea'), tagSelect = document.getElementById('note-tag-select');
+        
+        // *** NUEVO: Referencia al botón de exportar a Google Sheets ***
+        const exportGSheetBtn = document.getElementById('export-gsheet-btn');
+
+        const loadData = () => { const savedData = localStorage.getItem('learningJournalDataV6'); appData = savedData ? JSON.parse(savedData) : {}; NOTEBOOK_NAMES.forEach(name => { if (!appData[name]) appData[name] = []; }); saveData(); };
+        const saveData = () => localStorage.setItem('learningJournalDataV6', JSON.stringify(appData));
+        const populateTagSelector = () => { tagSelect.innerHTML = `<option value="">Selecciona una etiqueta...</option>`; NOTE_TAGS.forEach(tag => { tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`; }); };
+        
+        const renderNotebooksView = () => {
+            notebookGrid.innerHTML = '';
+            NOTEBOOK_NAMES.forEach(name => {
+                const noteCount = appData[name] ? appData[name].length : 0, iconId = NOTEBOOKS[name] || "dots";
+                const card = document.createElement('div'); card.className = 'notebook-card'; card.dataset.notebook = name;
+                card.innerHTML = `<div><div class="icon-container"><svg class="icon"><use href="#icon-${iconId}"></use></svg></div><h3>${name}</h3><div class="note-count">${noteCount} nota${noteCount !== 1 ? 's' : ''}</div></div><button class="btn btn-card-open">Abrir Cuaderno</button>`;
+                card.addEventListener('click', () => showNotesView(name)); notebookGrid.appendChild(card);
+            });
+            notesView.classList.add('hidden'); notebooksView.classList.remove('hidden');
+        };
+
+        const renderNotesList = () => {
+            notesList.innerHTML = ''; const notes = appData[currentNotebook] || [];
+            notesListTitle.textContent = `Notas de Aprendizaje (${notes.length})`;
+            if (notes.length === 0) { notesList.innerHTML = `<div id="empty-notes-message"><p>Aún no hay notas. ¡Usa el formulario para empezar!</p></div>`; return; }
+            notes.forEach((note, index) => {
+                const noteCard = document.createElement('div'); noteCard.className = 'note-card';
+                noteCard.innerHTML = `<div class="note-content">${note.replace(/</g, "<").replace(/>/g, ">")}</div><div class="note-item-actions"><button title="Editar" data-action="edit" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-edit"></use></svg></button><button title="Borrar" data-action="delete" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-trash"></use></svg></button></div>`;
+                notesList.appendChild(noteCard);
+            });
+        };
+
+        const showNotesView = (name) => { currentNotebook = name; notebookTitle.textContent = currentNotebook; renderNotesList(); notebooksView.classList.add('hidden'); notesView.classList.remove('hidden'); };
+        const showNotebooksView = () => { currentNotebook = null; notesView.classList.add('hidden'); notebooksView.classList.remove('hidden'); renderNotebooksView(); };
+
+        const addNote = () => {
+            const content = newNoteTextarea.value.trim();
+            const tag = tagSelect.value;
+            
+            if (!tag) { alert('Por favor, selecciona una etiqueta para la nota.'); return; }
+            if (!content) { alert('Por favor, escribe el contenido de la nota.'); return; }
+            
+            const now = new Date(), day = String(now.getDate()).padStart(2, '0'), month = String(now.getMonth() + 1).padStart(2, '0'), year = now.getFullYear().toString().slice(-2);
+            const dateStr = `(${day}-${month}-${year}).`;
+            const tagStr = `**${tag}:** `;
+            const fullNote = `${tagStr}${dateStr} ${content}`;
+            
+            appData[currentNotebook].unshift(fullNote); 
+            saveData(); 
+            renderNotesList();
+            
+            if (appData[currentNotebook].length === 12) {
+                alert('¡Felicidades! Has alcanzado 12 notas.\n\nLa próxima vez que descargues el PDF, se incluirá un resumen generado por IA.');
+            }
+
+            newNoteTextarea.value = ''; tagSelect.selectedIndex = 0;
+        };
+
+        const editNote = (index) => { const noteCard = notesList.children[index], contentDiv = noteCard.querySelector('.note-content'); contentDiv.innerHTML = `<textarea>${appData[currentNotebook][index]}</textarea>`; noteCard.querySelector('textarea').focus(); const actionsDiv = noteCard.querySelector('.note-item-actions'); actionsDiv.innerHTML = `<button title="Guardar" data-action="save" data-index="${index}"><svg class="icon" width="20" height="20"><use href="#icon-save"></use></svg></button>`; };
+        const saveEditedNote = (index) => { const textarea = notesList.children[index].querySelector('textarea'); appData[currentNotebook][index] = textarea.value; saveData(); renderNotesList(); };
+        const deleteNote = (index) => { if (confirm('¿Borrar esta nota?')) { appData[currentNotebook].splice(index, 1); saveData(); renderNotesList(); } };
+        
+        const downloadPdf = async () => {
+            const originalBtnContent = downloadBtn.innerHTML;
+            downloadBtn.disabled = true;
+
+            try {
+                const notes = appData[currentNotebook]; 
+                if (notes.length === 0) { alert('Este cuaderno está vacío.'); return; }
+                if (!window.jspdf) { alert('Librería PDF no cargada.'); return; }
+
+                let aiSummary = null;
+                if (notes.length >= 12) {
+                    downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-brain"></use></svg> Generando...`;
+                    aiSummary = await getAiSummary(notes.slice(0, 12));
+                }
+                
+                downloadBtn.innerHTML = `<svg class="icon"><use href="#icon-download"></use></svg> Descargando...`;
+
+                const { jsPDF } = window.jspdf; 
+                const doc = new jsPDF({ unit: 'mm', format: 'a4' }); 
+                const pageMargin = 25; 
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const centerX = pageWidth / 2;
+                let currentY = 30;
+                const textMaxWidth = pageWidth - (pageMargin * 2);
+
+                doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.text("Experiencias de Aprendizaje", centerX, currentY, { align: 'center' }); currentY += 12;
+                doc.setFontSize(14); doc.setFont('helvetica', 'italic'); doc.setTextColor(100); doc.text("El Saber como Universo Inconmensurable", centerX, currentY, { align: 'center' }); currentY += 12;
+                doc.setFontSize(16); doc.setFont('helvetica', 'normal'); doc.setTextColor(0); 
+                doc.text(currentNotebook, centerX, currentY, { align: 'center' }); 
+                currentY += 15;
+
+                if (aiSummary) {
+                    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+                    doc.text("Resumen de Aprendizajes (IA)", pageMargin, currentY);
+                    currentY += 7;
+
+                    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+                    doc.text(aiSummary, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
+                    const summaryLines = doc.splitTextToSize(aiSummary, textMaxWidth);
+                    currentY += (summaryLines.length * 5) + 10;
+                    
+                    doc.setDrawColor(200);
+                    doc.line(pageMargin, currentY - 5, pageWidth - pageMargin, currentY - 5);
+                }
+                
+                notes.forEach(note => {
+                    const cleanNote = note.replace(/\*\*/g, ''); 
+                    const textLines = doc.splitTextToSize(cleanNote, textMaxWidth);
+                    const lineHeight = 5; 
+                    const blockHeight = textLines.length * lineHeight;
+                    if (currentY + blockHeight > pageHeight - pageMargin) { doc.addPage(); currentY = pageMargin; }
+                    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+                    doc.text(cleanNote, pageMargin, currentY, { align: 'justify', maxWidth: textMaxWidth });
+                    currentY += blockHeight + 5; 
+                });
+                doc.save(`Experiencias_${currentNotebook.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+            
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = originalBtnContent;
+            }
+        };
+
+        async function getAiSummary(notes) {
+            const API_KEY = 'AIzaSyDMiA7QVEubhAwBfToV4EP6TE5_xiy3Ohc';
+            
+            if (!window.GoogleGenerativeAI) {
+                alert('El SDK de Google AI no se ha cargado.');
+                return null;
+            }
+
+            try {
+                const genAI = new window.GoogleGenerativeAI(API_KEY);
+                
+                const safetySettings = [
+                    { category: window.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                    { category: window.HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                    { category: window.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                    { category: window.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: window.HarmBlockThreshold.BLOCK_NONE },
+                ];
+
+                const model = genAI.getGenerativeModel({ 
+                    model: "gemini-1.5-flash-latest", 
+                    safetySettings 
+                });
+
+                const textToSummarize = notes.map(note => note.replace(/\*\*[^*]+\*\* /, '')).join('\n---\n');
+                const prompt = `Resume los siguientes 12 aprendizajes en un párrafo conciso y claro. Extrae las ideas principales, los patrones y la conexión entre ellos para sintetizar el conocimiento adquirido:\n\n${textToSummarize}`;
+
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                
+                if (!response.text) {
+                    throw new Error('La respuesta de la IA fue bloqueada o está vacía. Revisa los detalles en la consola.');
+                }
+                
+                return response.text();
+
+            } catch (error) {
+                console.error('Error al generar el resumen:', error);
+                const errorMessage = error.message || "Error desconocido.";
+                alert(`No se pudo generar el resumen. Revisa la consola para más detalles.\n\nError: ${errorMessage}`);
+                return null;
+            }
+        }
+        
+        const resetNotebook = () => { if (confirm(`¿BORRAR TODAS LAS NOTAS de "${currentNotebook}"?`)) { appData[currentNotebook] = []; saveData(); renderNotesList(); } };
+        backBtn.addEventListener('click', showNotebooksView); addNoteForm.addEventListener('submit', (e) => { e.preventDefault(); addNote(); });
+        downloadBtn.addEventListener('click', downloadPdf);
+        resetBtn.addEventListener('click', resetNotebook);
+        
+        // *** NUEVO: Event listener para el botón de exportar a Google Sheets ***
+        exportGSheetBtn.addEventListener('click', () => {
+            const notes = appData[currentNotebook];
+            if (!notes || notes.length === 0) {
+                alert("Este cuaderno está vacío. No hay nada que exportar.");
+                return;
+            }
+            // Llamar a la función principal de exportación
+            exportNotesToSheet(currentNotebook, notes);
         });
+
+        notesList.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; const action = button.dataset.action, index = parseInt(button.dataset.index); if (action === 'edit') editNote(index); else if (action === 'delete') deleteNote(index); else if (action === 'save') saveEditedNote(index); });
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) { const recognition = new SpeechRecognition(); recognition.lang = 'es-ES'; recognition.onstart = () => recordBtn.classList.add('is-recording'); recognition.onend = () => recordBtn.classList.remove('is-recording'); recognition.onresult = (e) => { newNoteTextarea.value += ' ' + e.results[e.results.length - 1][0].transcript.trim(); }; recordBtn.addEventListener('click', () => recognition.start());
+        } else { recordBtn.disabled = true; }
+
+        loadData(); populateTagSelector(); renderNotebooksView();
+    });
     </script>
 </body>
 </html>
