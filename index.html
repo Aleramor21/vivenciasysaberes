@@ -253,9 +253,9 @@
 
             await gapi.client.sheets.spreadsheets.values.append({
                 spreadsheetId: SPREADSHEET_ID,
-                // [CORRECCIÓN FINAL] Se usan comillas simples alrededor del nombre de la hoja para
-                // crear una referencia A1 válida y robusta que la API pueda interpretar correctamente.
-                range: `'${SHEET_NAME}'!A1`, 
+                // [CORRECCIÓN FINAL] La sintaxis correcta para 'append' es simplemente el nombre de la hoja.
+                // La API se encarga de encontrar la última fila y añadir los datos a continuación.
+                range: SHEET_NAME, 
                 valueInputOption: 'USER_ENTERED',
                 insertDataOption: 'INSERT_ROWS',
                 resource: {
