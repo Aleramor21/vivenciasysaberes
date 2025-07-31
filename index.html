@@ -234,27 +234,21 @@
 
         try {
             const rowsToAppend = notes.map(note => {
-                // Intento #1: Analizar el formato estricto y perfecto: **Tag:** (fecha). Contenido
-                let match = note.match(/\*\*(.*?):\*\* \((.*?)\)\.\s*(.*)/s);
+                // [SOLUCIÓN ROBUSTA] Esta expresión regular es más flexible.
+                // Busca la etiqueta, luego busca la fecha entre paréntesis (opcionalmente seguida por un punto)
+                // y finalmente captura el resto como contenido.
+                // El `\.?` hace que el punto después de la fecha sea opcional, solucionando el problema con notas antiguas.
+                const match = note.match(/\*\*(.*?):\*\* \((.*?)\)\.?\s*(.*)/s);
+                
                 if (match) {
                     const tag = match[1].trim();
                     const date = match[2].trim();
                     const content = match[3].trim();
                     return [date, currentNotebook, tag, content];
+                } else {
+                    // Si una nota no coincide en absoluto (muy improbable), se maneja de forma segura.
+                    return ['', currentNotebook, 'Sin Etiqueta', note.trim()];
                 }
-
-                // Intento #2 (Fallback): Si falla el estricto, buscar al menos la etiqueta.
-                // Esto maneja notas antiguas o editadas donde el formato de fecha puede ser incorrecto.
-                match = note.match(/\*\*(.*?):\*\*\s*(.*)/s);
-                if (match) {
-                    const tag = match[1].trim();
-                    const content = match[2].trim();
-                    return ['', currentNotebook, tag, content]; // Dejar la fecha en blanco pero salvar el resto.
-                }
-
-                // Intento #3 (Último Recurso): Si no se encuentra ninguna etiqueta.
-                // Se coloca toda la nota como contenido para no perder datos.
-                return ['', currentNotebook, 'Sin Etiqueta', note.trim()];
             });
 
             if (rowsToAppend.length === 0) {
