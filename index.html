@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -141,7 +140,7 @@
 </head>
 <body>
     <svg width="0" height="0" class="hidden">
-        <!-- Iconos existentes... -->
+        <!-- Tus iconos SVG existentes -->
         <symbol id="icon-target" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="#F87171"/><circle cx="32" cy="32" r="20" fill="#FAFAFA"/><circle cx="32" cy="32" r="12" fill="#F87171"/><circle cx="32" cy="32" r="5" fill="#38BDF8"/><path d="M42 16 L34 28 L36 30 L44 22 Z" fill="#38BDF8"/><path d="M44 22 L42 24 L36 30 L38 32 L46 24 Z" fill="#0EA5E9"/><path d="M42 16 L46 20 L44 22 L42 16 Z" fill="#7DD3FC"/></symbol>
         <symbol id="icon-robot" viewBox="0 0 64 64"><rect x="12" y="18" width="40" height="30" rx="8" fill="#4B5563"/><rect x="16" y="22" width="32" height="22" rx="4" fill="#1F2937"/><rect x="22" y="8" width="20" height="10" rx="5" fill="#4B5563"/><circle cx="32" cy="8" r="4" fill="#60A5FA"/><circle cx="24" cy="33" r="4" fill="#34D399"/><circle cx="40" cy="33" r="4" fill="#34D399"/></symbol>
         <symbol id="icon-plant" viewBox="0 0 64 64"><path d="M32,56 C 40,56 44,48 44,40 C 44,32 40,24 32,24 C 24,24 20,32 20,40 C 20,48 24,56 32,56 Z" fill="#34D399"/><path d="M32,24 V 8" stroke="#34D399" stroke-width="6" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 1 20,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M32,20 A 12 12 0 0 0 44,32" stroke="#34D399" stroke-width="6" fill="none" stroke-linecap="round"/></symbol>
@@ -182,14 +181,11 @@
         </section>
     </div>
 
-    <!-- *** [CORRECCIÓN] Carga de las librerías de Google API y Google Identity Services (GIS) *** -->
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     
     <script>
-    // --- [CORRECCIÓN] INICIO: NUEVO BLOQUE DE INTEGRACIÓN CON GOOGLE SHEETS (MÉTODO MODERNO) ---
-
-    // Configuración de la API de Google
+    // --- Bloque de Integración con Google Sheets ---
     const CLIENT_ID = '773016062043-aihqt4olbdkoogo5a86srjll3dj0bmvk.apps.googleusercontent.com';
     const SPREADSHEET_ID = '1Q9DkYwuhrqB0h3zdxjjnkIPIgV3mVVeMlL5RvoBlpPs';
     const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
@@ -199,7 +195,6 @@
     let gapiInited = false;
     let gisInited = false;
 
-    // Se llama cuando ambas librerías (GAPI y GIS) están cargadas y listas.
     function checkAndEnableGoogleApiFeatures() {
         if (gapiInited && gisInited) {
             const exportBtn = document.getElementById('export-gsheet-btn');
@@ -211,12 +206,8 @@
         }
     }
 
-    // Callback después de que el script de GAPI (api.js) se carga.
-    function gapiLoaded() {
-        gapi.load('client', initializeGapiClient);
-    }
+    function gapiLoaded() { gapi.load('client', initializeGapiClient); }
 
-    // Inicializa el cliente GAPI (sin autenticación aquí).
     async function initializeGapiClient() {
         await gapi.client.init({
             discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
@@ -225,22 +216,16 @@
         checkAndEnableGoogleApiFeatures();
     }
 
-    // Callback después de que el script de GIS (gsi/client) se carga.
     function gisLoaded() {
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID,
             scope: SCOPES,
-            callback: '', // Se define dinámicamente al hacer clic.
+            callback: '', 
         });
         gisInited = true;
         checkAndEnableGoogleApiFeatures();
     }
     
-    /**
-     * Función principal para exportar las notas a Google Sheets.
-     * @param {string} currentNotebook - El nombre del cuaderno actual.
-     * @param {Array<string>} notes - El array de notas a exportar.
-     */
     async function exportNotesToGoogleSheets(currentNotebook, notes) {
         const exportBtn = document.getElementById('export-gsheet-btn');
         const originalBtnHTML = exportBtn.innerHTML;
@@ -248,27 +233,25 @@
         exportBtn.innerHTML = `Exportando...`;
 
         try {
-            // Analiza las notas para crear las filas que se insertarán
             const rowsToAppend = notes.map(note => {
                 const match = note.match(/\*\*(.*?):\*\* \((.*?)\)\.\s*(.*)/s);
                 if (match) {
                     const tag = match[1].trim();
                     const date = match[2].trim();
                     const content = match[3].trim();
-                    return [date, currentNotebook, tag, content]; // Orden: Fecha, Libro, Etiqueta, Contenido
+                    return [date, currentNotebook, tag, content];
                 }
                 return null;
-            }).filter(row => row !== null); // Eliminar notas que no tengan el formato
+            }).filter(row => row !== null);
 
             if (rowsToAppend.length === 0) {
                 alert('No se encontraron notas con el formato correcto para exportar.');
                 return;
             }
 
-            // Utiliza 'append' para agregar las filas al final de la tabla
             await gapi.client.sheets.spreadsheets.values.append({
                 spreadsheetId: SPREADSHEET_ID,
-                range: `${SHEET_NAME}!A:D`,
+                range: SHEET_NAME, // [CORRECCIÓN FINAL] Solo se necesita el nombre de la hoja para 'append'.
                 valueInputOption: 'USER_ENTERED',
                 insertDataOption: 'INSERT_ROWS',
                 resource: {
@@ -287,11 +270,11 @@
             exportBtn.innerHTML = originalBtnHTML;
         }
     }
-
-    // --- FIN: NUEVO BLOQUE DE INTEGRACIÓN ---
+    // --- Fin del Bloque de Integración ---
 
 
     document.addEventListener('DOMContentLoaded', () => {
+        // ... (resto del código de la aplicación, sin cambios) ...
         const NOTEBOOKS = {"IA & Tech": "robot", "Teoría Decisoria": "target", "Desarrollo Personal": "plant", "Felicidad": "happy", "Filosofía": "philosophy", "Neurociencia e Inteligencia": "brain", "Aprendizaje Continuo": "book", "Otros": "dots"};
         const NOTEBOOK_EMOJIS = {"IA & Tech": "🤖", "Teoría Decisoria": "🎯", "Desarrollo Personal": "🌱", "Felicidad": "😊", "Filosofía": "🏛️", "Neurociencia e Inteligencia": "🧠", "Aprendizaje Continuo": "📚", "Otros": "🔮"};
         const NOTE_TAGS = ["Descubrir", "Recordar", "Epifania", "Comprender", "Reflexionar", "Evaluar", "Errar", "Aplicar", "Crear", "Intuir"];
@@ -358,20 +341,14 @@
         const saveEditedNote = (index) => { const textarea = notesList.children[index].querySelector('textarea'); appData[currentNotebook][index] = textarea.value; saveData(); renderNotesList(); };
         const deleteNote = (index) => { if (confirm('¿Borrar esta nota?')) { appData[currentNotebook].splice(index, 1); saveData(); renderNotesList(); } };
         
-        const downloadPdf = async () => {
-            // ... (código de descarga de PDF sin cambios)
-        };
-
-        async function getAiSummary(notes) {
-            // ... (código de resumen con IA sin cambios)
-        }
+        const downloadPdf = async () => { /* ... código pdf sin cambios ... */ };
+        async function getAiSummary(notes) { /* ... código AI sin cambios ... */ }
         
         const resetNotebook = () => { if (confirm(`¿BORRAR TODAS LAS NOTAS de "${currentNotebook}"?`)) { appData[currentNotebook] = []; saveData(); renderNotesList(); } };
         backBtn.addEventListener('click', showNotebooksView); addNoteForm.addEventListener('submit', (e) => { e.preventDefault(); addNote(); });
         downloadBtn.addEventListener('click', downloadPdf);
         resetBtn.addEventListener('click', resetNotebook);
         
-        // --- [CORRECCIÓN] Event listener para el botón de exportar, usando el nuevo flujo de autenticación ---
         exportGSheetBtn.addEventListener('click', () => {
             const notes = appData[currentNotebook];
             if (!notes || notes.length === 0) {
@@ -379,17 +356,13 @@
                 return;
             }
             
-            // Define el callback que se ejecutará DESPUÉS de que el usuario dé su permiso.
             tokenClient.callback = async (resp) => {
                 if (resp.error !== undefined) {
-                    throw (resp); // Manejará el error en el bloque catch de abajo
+                    throw (resp);
                 }
-                // Si la autenticación fue exitosa, ahora sí exportamos las notas.
                 await exportNotesToGoogleSheets(currentNotebook, notes);
             };
 
-            // Pide el token de acceso. Si es la primera vez, mostrará el pop-up de consentimiento de Google.
-            // Si el usuario ya dio permiso, obtendrá el token silenciosamente.
             if (gapi.client.getToken() === null) {
                 tokenClient.requestAccessToken({ prompt: 'consent' });
             } else {
