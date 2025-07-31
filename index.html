@@ -189,7 +189,6 @@
     const CLIENT_ID = '773016062043-aihqt4olbdkoogo5a86srjll3dj0bmvk.apps.googleusercontent.com';
     const SPREADSHEET_ID = '1Q9DkYwuhrqB0h3zdxjjnkIPIgV3mVVeMlL5RvoBlpPs';
     const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
-    // [CORRECCIÓN FINAL] Asegurarse de que este nombre coincida EXACTAMENTE con la pestaña en Google Sheets.
     const SHEET_NAME = 'experienciasysaberes';
 
     let tokenClient;
@@ -234,22 +233,32 @@
         exportBtn.innerHTML = `Exportando...`;
 
         try {
-            // [CORRECCIÓN] Se modifica esta sección para limpiar el contenido.
             const rowsToAppend = notes.map(note => {
-                const match = note.match(/\*\*(.*?):\*\* \((.*?)\)\.\s*(.*)/s);
+                // Intento #1: Analizar el formato estricto y perfecto: **Tag:** (fecha). Contenido
+                let match = note.match(/\*\*(.*?):\*\* \((.*?)\)\.\s*(.*)/s);
                 if (match) {
-                    const tag = match[1].trim();       // Captura la Etiqueta (Ej: "Evaluar")
-                    const date = match[2].trim();      // Captura la Fecha (Ej: "30-07-25")
-                    const content = match[3].trim();   // Captura solo el contenido limpio.
-                    
-                    // Se arma la fila con los datos separados y limpios
+                    const tag = match[1].trim();
+                    const date = match[2].trim();
+                    const content = match[3].trim();
                     return [date, currentNotebook, tag, content];
                 }
-                return null;
-            }).filter(row => row !== null);
+
+                // Intento #2 (Fallback): Si falla el estricto, buscar al menos la etiqueta.
+                // Esto maneja notas antiguas o editadas donde el formato de fecha puede ser incorrecto.
+                match = note.match(/\*\*(.*?):\*\*\s*(.*)/s);
+                if (match) {
+                    const tag = match[1].trim();
+                    const content = match[2].trim();
+                    return ['', currentNotebook, tag, content]; // Dejar la fecha en blanco pero salvar el resto.
+                }
+
+                // Intento #3 (Último Recurso): Si no se encuentra ninguna etiqueta.
+                // Se coloca toda la nota como contenido para no perder datos.
+                return ['', currentNotebook, 'Sin Etiqueta', note.trim()];
+            });
 
             if (rowsToAppend.length === 0) {
-                alert('No se encontraron notas con el formato correcto para exportar.');
+                alert('No se encontraron notas válidas para exportar.');
                 exportBtn.disabled = false;
                 exportBtn.innerHTML = originalBtnHTML;
                 return;
